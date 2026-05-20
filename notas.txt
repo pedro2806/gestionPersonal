@@ -1,0 +1,65 @@
+CREATE TABLE IF NOT EXISTS `cursos` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `nombre_curso` VARCHAR(150) NOT NULL,
+  `descripcion` TEXT NULL,
+  `horas` INT NOT NULL DEFAULT 0,
+  `institucion` VARCHAR(150) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_spanish_ci;
+
+CREATE TABLE IF NOT EXISTS `usuario_cursos` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_usuario` INT NOT NULL,
+  `id_curso` INT NOT NULL,
+  `fecha_finalizacion` DATE NOT NULL,
+  `calificacion` VARCHAR(10) DEFAULT 'N/A',
+  `estatus_curso` VARCHAR(30) NOT NULL, -- 'En Curso', 'Completado', 'Pendiente'
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_spanish_ci;
+
+
+--------------------------------------------------------------------------------------
+
+-- 1. Catálogo base de tipos de requerimientos (Con prefijo)
+DROP TABLE IF EXISTS `expediente_tipos_documentos`;
+CREATE TABLE IF NOT EXISTS `expediente_tipos_documentos` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `nombre_tipo` VARCHAR(150) NOT NULL,
+  `subido_por` VARCHAR(30) NOT NULL DEFAULT 'Empleado', -- 'Empleado', 'Jefe Admin', 'Jefe Tecnico'
+  `requiere_jefe_admin` TINYINT(1) NOT NULL DEFAULT 0,
+  `requiere_jefe_tecnico` TINYINT(1) NOT NULL DEFAULT 0,
+  `requiere_calidad` TINYINT(1) NOT NULL DEFAULT 0,
+  `requiere_rrhh` TINYINT(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2. Tabla pivote de documentos subidos por el personal (Se queda igual por tu instrucción)
+DROP TABLE IF EXISTS `expediente_documentos`;
+CREATE TABLE IF NOT EXISTS `expediente_documentos` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_usuario` INT NOT NULL, -- Relacionado con tu tabla general 'usuarios'
+  `id_tipo_documento` INT NOT NULL, -- FK a expediente_tipos_documentos
+  `archivo_url` VARCHAR(255) NOT NULL,
+  `val_jefe_admin` TINYINT NOT NULL DEFAULT 0, -- 0=Pendiente, 1=Aprobado, 2=Rechazado, 3=N/A
+  `val_jefe_tecnico` TINYINT NOT NULL DEFAULT 0,
+  `val_calidad` TINYINT NOT NULL DEFAULT 0,
+  `val_rrhh` TINYINT NOT NULL DEFAULT 0,
+  `estatus_general` VARCHAR(25) NOT NULL DEFAULT 'En Revisión', -- 'En Revisión', 'Aprobado', 'Rechazado'
+  `comentarios` TEXT NULL,
+  `fecha_subida` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 3. Tabla de asignación múltiple de Jefes Técnicos a Empleados (Con prefijo)
+DROP TABLE IF EXISTS `expediente_jefes_tecnicos`;
+CREATE TABLE IF NOT EXISTS `expediente_jefes_tecnicos` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_usuario_empleado` INT NOT NULL,     -- El metrólogo (Ej: Carlos Mtz)
+  `id_usuario_jefe_tecnico` INT NOT NULL, -- El jefe técnico asignado
+  `id_departamento` INT NOT NULL,         -- El departamento/laboratorio del alcance (Ej: Metalografía)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_emp_jefe_depto` (`id_usuario_empleado`, `id_usuario_jefe_tecnico`, `id_departamento`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `expediente_tipos_documentos` 
+ADD COLUMN `tipo_alcance` VARCHAR(20) NOT NULL DEFAULT 'Por Puesto';
