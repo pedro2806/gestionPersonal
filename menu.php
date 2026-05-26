@@ -48,8 +48,10 @@
     </a>
     <div id="collapseActivos" class="collapse" data-parent="#accordionSidebar">
         <div class="bg-white py-2 collapse-inner rounded">
-            <a class="collapse-item" href="admin_documentos">Administrar Documentos</a>
+            <a class="collapse-item" href="admin_personal">Administrar Personal</a>
             <a class="collapse-item" href="config_documentos">Configurar Documentos</a>
+            <a class="collapse-item" href="validacion">Auditoría y Validación</a>
+            <a class="collapse-item" href="reportes">Reportes</a>            
         </div>
     </div>
 </li>

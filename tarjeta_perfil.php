@@ -14,10 +14,10 @@
                 <h4 class="font-weight-bold text-gray-800 mb-1" id="tarjeta_nombre_completo">Identificando Colaborador...</h4>
                 <p class="text-muted small mb-3 font-weight-bold" id="tarjeta_puesto_subtitulo">-</p>
                 <div class="row text-gray-900 small g-3">
-                    <div class="col-md-3 border-left pl-3"><span class="text-muted d-block text-uppercase text-xs font-weight-bold">No. Empleado</span><span class="font-weight-bold h6 mb-0" id="tarjeta_no_empleado">-</span></div>
+                    <div class="col-md-1 border-left pl-3"><span class="text-muted d-block text-uppercase text-xs font-weight-bold">No. Emp</span><span class="font-weight-bold h6 mb-0" id="tarjeta_no_empleado">-</span></div>
                     <div class="col-md-3 border-left pl-3"><span class="text-muted d-block text-uppercase text-xs font-weight-bold">Área / Depto Base</span><span class="font-weight-bold h6 mb-0" id="tarjeta_departamento">-</span></div>
-                    <div class="col-md-3 border-left pl-3"><span class="text-muted d-block text-uppercase text-xs font-weight-bold">Jefe Administrativo</span><span class="font-weight-bold h6 mb-0 text-truncate d-block" id="tarjeta_jefe_admin">-</span></div>
-                    <div class="col-md-3 border-left pl-3"><span class="text-muted d-block text-uppercase text-xs font-weight-bold">Jefes Técnicos (Alcance)</span><div id="tarjeta_jefes_tecnicos_zona" class="d-flex flex-wrap mt-1"><span class="text-muted">-</span></div></div>
+                    <div class="col-md-4 border-left pl-3"><span class="text-muted d-block text-uppercase text-xs font-weight-bold">Jefe Administrativo</span><span class="font-weight-bold h6 mb-0 text-truncate d-block" id="tarjeta_jefe_admin">-</span></div>
+                    <div class="col-md-4 border-left pl-3"><span class="text-muted d-block text-uppercase text-xs font-weight-bold">Jefes Técnicos (Alcance)</span><div id="tarjeta_jefes_tecnicos_zona" class="d-flex flex-wrap mt-1"><span class="text-muted">-</span></div></div>
                 </div>
             </div>
         </div>

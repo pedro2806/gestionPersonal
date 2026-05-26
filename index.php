@@ -1,7 +1,6 @@
 <?php
-// index.php - Vista Individual del Empleado con Selección Unificada de Depto Base y Alcances
 require_once 'conn.php';
-$id_usuario_sesion = isset($_COOKIE['id_usuario']) ? intval($_COOKIE['id_usuario']) : 239; 
+$id_usuario_sesion = isset($_COOKIE['id_usuario']) ? intval($_COOKIE['id_usuario']) : 276; 
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -13,77 +12,72 @@ $id_usuario_sesion = isset($_COOKIE['id_usuario']) ? intval($_COOKIE['id_usuario
     <link href="vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">    
     <link href="css/sb-admin-2.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Evitar el resplandor grueso por defecto y estilizar la carga de archivos nativa -->
+    <style>
+        .form-control:focus, .form-select:focus {
+            box-shadow: none;
+            border-color: #6c757d;
+        }
+        input[type="file"]::file-selector-button {
+            background-color: #212529;
+            color: white;
+            border: none;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.25rem;
+            margin-right: 10px;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+        input[type="file"]::file-selector-button:hover {
+            background-color: #343a40;
+        }
+    </style>
 </head>
-<body id="page-top">
+<body id="page-top" class="bg-light">
     <div id="wrapper">
         <?php include 'menu.php'; ?>
-        <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content-wrapper" class="d-flex flex-column bg-light">
             <div id="content">
                 <?php include 'encabezado.php'; ?>
-                <div class="container-fluid">
+                <div class="container-fluid px-4">
                     
                     <input type="hidden" id="usuario_sesion_id" value="<?php echo $id_usuario_sesion; ?>">
                     <input type="hidden" id="usuario_destino_carga_id" value="<?php echo $id_usuario_sesion; ?>">
                     <input type="hidden" id="contexto_vista_maestra" value="Empleado">
 
                     <!-- TARJETA CREDENCIAL CORPORATIVA MESS (COMPONENTE REUSABLE DINÁMICO) -->
-                    <div id="contenedor_tarjeta_credencial"><?php include 'tarjeta_perfil.php'; ?></div>
+                    <div id="contenedor_tarjeta_credencial" class="mb-4"><?php include 'tarjeta_perfil.php'; ?></div>
 
-                    <!-- FORMULARIO DE CARGA INTELIGENTE Y RETÍCULA -->
                     <div class="row">
-                        <div class="col-xl-4 col-lg-5 mb-4">
-                            <div class="card shadow">
-                                <div class="card-header py-3 bg-gradient-primary">
-                                    <h6 class="m-0 font-weight-bold text-white"><i class="fas fa-upload mr-2"></i>Cargar Mi Documento</h6>
-                                </div>
-                                <div class="card-body">
-                                    <form id="form_subir_documento" enctype="multipart/form-data">
-                                        <div class="form-group mb-3">
-                                            <label class="small font-weight-bold text-muted text-uppercase">Tipo de Requerimiento</label>
-                                            <select class="form-control" name="id_tipo_documento" id="select_tipo_documento" required></select>
+                        <div class="col-12 mb-4">
+                            <!-- Contenedor Plano Estilo Flat -->
+                            <div class="card border-0 rounded-3">
+                                <div class="card-body p-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div class="d-flex align-items-center">
+                                            <span class="text-secondary me-2"><i class="fas fa-clipboard-list"></i></span>
+                                            <h6 class="m-0 fw-semibold text-secondary">Matriz de Cumplimiento y Requisitos de mi Expediente</h6>
                                         </div>
-
-                                        <!-- CONTENEDOR DE SELECCIÓN DE LABORATORIO (DE CAJÓN O ALCANCE ADICIONAL) -->
-                                        <div class="form-group mb-3 d-none" id="contenedor_depto_alcance">
-                                            <label class="small font-weight-bold text-warning text-uppercase">
-                                                <i class="fas fa-microscope mr-1"></i> ¿Para qué Laboratorio / Área aplica?
-                                            </label>
-                                            <select class="form-control border-warning text-dark font-weight-bold" name="id_departamento_alcance" id="select_depto_alcance"></select>
-                                        </div>
-
-                                        <div class="form-group mb-3">
-                                            <label class="small font-weight-bold text-muted text-uppercase">Seleccionar Archivo (PDF)</label>
-                                            <input type="file" class="form-control" name="archivo_doc" accept=".pdf" required>
-                                        </div>
-                                        <button type="submit" class="btn btn-primary btn-block font-weight-bold shadow-sm">
-                                            <i class="fas fa-cloud-upload-alt mr-1"></i> Enviar a Validación
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-xl-8 col-lg-7 mb-4">
-                            <div class="card shadow">
-                                <div class="card-header py-3 bg-gradient-dark d-flex justify-content-between align-items-center">
-                                    <h6 class="m-0 font-weight-bold text-white"><i class="fas fa-file-invoice mr-2"></i>Estatus de Mis Validaciones</h6>
-                                    <div id="zona_boton_regresar"></div>
-                                </div>
-                                <div class="card-body">
+                                        <div id="zona_boton_regresar"></div>
+                                    </div>
+                                    
                                     <div class="table-responsive">
-                                        <table class="table table-bordered table-striped align-middle text-center small" width="100%">
-                                            <thead class="table-dark text-uppercase">
+                                        <!-- Tabla limpia sin líneas verticales con tipografía suavizada -->
+                                        <table class="table table-hover align-middle small text-secondary" id="tabla_cumplimiento_expediente" width="100%">
+                                            <thead class="table-light text-uppercase fs-7">
                                                 <tr>
-                                                    <th class="text-start">Documento</th>
-                                                    <th>Área Afectada</th>
-                                                    <th>Archivo</th>
-                                                    <th>Jefe Admin</th>
-                                                    <th>Jefe Técnico</th>
-                                                    <th>Calidad</th>
-                                                    <th>RRHH</th>
-                                                    <th>Estatus</th>
+                                                    <th class="border-bottom-2 py-3 text-start">Requisito / Documento</th>
+                                                    <th class="border-bottom-2 py-3 text-center">Tipo / Origen</th>
+                                                    <th class="border-bottom-2 py-3 text-center">Laboratorio / Área</th>
+                                                    <th class="border-bottom-2 py-3 text-center">Estatus</th>
+                                                    <th class="border-bottom-2 py-3 text-center">Validaciones (JA / LT / CAL / RRHH)</th>
+                                                    <th class="border-bottom-2 py-3 text-center" style="width: 200px;">Acción / Archivo</th>
                                                 </tr>
                                             </thead>
-                                            <tbody id="tbody_mi_expediente"></tbody>
+                                            <tbody id="tbody_cumplimiento_expediente" class="border-top-0">
+                                                <!-- Cargado dinámicamente -->
+                                            </tbody>
                                         </table>
                                     </div>
                                 </div>
@@ -91,11 +85,47 @@ $id_usuario_sesion = isset($_COOKIE['id_usuario']) ? intval($_COOKIE['id_usuario
                         </div>
                     </div>
 
+                    <!-- MODAL: SUBIR REQUISITO (DISEÑO FLAT) -->
+                    <div class="modal fade" id="modal_subir_requisito" tabindex="-1" role="dialog" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered" role="document">
+                            <div class="modal-content border-0">
+                                <div class="modal-header border-bottom-0 pt-4 px-4 pb-2">
+                                    <h5 class="modal-title fw-semibold text-secondary h6 text-uppercase"><i class="fas fa-cloud-upload-alt me-2"></i> Subir Documento</h5>
+                                    <button type="button" class="btn-close small" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <form id="form_subir_requisito_fila" enctype="multipart/form-data">
+                                    <div class="modal-body px-4">
+                                        <input type="hidden" name="id_tipo_documento" id="modal_upload_id_tipo">
+                                        <input type="hidden" name="id_departamento_alcance" id="modal_upload_id_depto">
+                                        
+                                        <div class="mb-3">
+                                            <label class="small fw-medium text-muted mb-1">Documento a Cargar</label>
+                                            <input type="text" id="modal_upload_nombre_doc" class="form-control bg-light border-0 fw-semibold text-dark rounded-2" readonly>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="small fw-medium text-muted mb-1">Área Aplicable</label>
+                                            <input type="text" id="modal_upload_nombre_depto" class="form-control bg-light border-0 rounded-2" readonly>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="small fw-medium text-muted mb-1">Seleccionar PDF</label>
+                                            <input type="file" class="form-control bg-light border-0 rounded-2" name="archivo_doc" accept=".pdf" required>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer border-top-0 p-4">
+                                        <button type="button" class="btn btn-sm btn-light fw-medium px-3 text-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-sm btn-dark fw-medium px-4">Iniciar Validación</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
-            <footer class="sticky-footer bg-white mt-auto"><div class="container my-auto"><div class="copyright text-center my-auto"><span>Copyright &copy; MESS 2026</span></div></div></footer>
+            <footer class="sticky-footer bg-light mt-auto border-top-0"><div class="container my-auto"><div class="copyright text-center my-auto text-muted small"><span>Copyright &copy; MESS 2026</span></div></div></footer>
         </div>
     </div>
+    
     <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
     <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>    
     <script src="js/sb-admin-2.min.js"></script>

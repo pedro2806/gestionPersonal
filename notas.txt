@@ -1,3 +1,7 @@
+4e73df
+22395d
+En css\sb-admin-2.min.css
+
 CREATE TABLE IF NOT EXISTS `cursos` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `nombre_curso` VARCHAR(150) NOT NULL,
