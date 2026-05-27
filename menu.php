@@ -1,6 +1,6 @@
 <?php
     include 'conn.php';
-    if($_COOKIE['noEmpleado'] == '' || $_COOKIE['noEmpleado'] == null){
+    if(empty($_COOKIE['noEmpleadoGP'])){
         //echo '<script>window.location.assign("../loginMaster")</script>';
     }
 ?>

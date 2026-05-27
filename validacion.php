@@ -3,8 +3,8 @@
 require_once 'conn.php';
 
 // Supongamos que aquí recuperas los datos reales del usuario que inició sesión
-$id_usuario_sesion = isset($_COOKIE['id_usuario']) ? intval($_COOKIE['id_usuario']) : 45; 
-$no_empleado_sesion = isset($_COOKIE['noEmpleado']) ? intval($_COOKIE['noEmpleado']) : 45; // Ejemplo: 5 para Calidad, 403 para RRHH
+$id_usuario_sesion = isset($_COOKIE['id_usuarioGP']) ? intval($_COOKIE['id_usuarioGP']) : 45;
+$no_empleado_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmpleadoGP']) : 45; // Ejemplo: 5 para Calidad, 403 para RRHH
 ?>
 <!DOCTYPE html>
 <html lang="es">
