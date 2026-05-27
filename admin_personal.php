@@ -136,7 +136,12 @@
                                 <div class="row g-3 mb-3">
                                     <div class="col-md-6">
                                         <label class="small fw-medium text-muted mb-1">Nombre Completo</label>
-                                        <input type="text" class="form-control bg-light border-0 fw-semibold text-dark rounded-2" name="mod_nombre" id="mod_nombre" required>
+                                        <div class="input-group">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-start-2" onclick="abrir_modal_cambiar_foto()" title="Cambiar foto del colaborador">
+                                                <i class="fas fa-camera"></i>
+                                            </button>
+                                            <input type="text" class="form-control bg-light border-0 fw-semibold text-dark rounded-end-2" name="mod_nombre" id="mod_nombre" required>
+                                        </div>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="small fw-medium text-muted mb-1">Correo Institucional</label>
@@ -155,10 +160,16 @@
                                     </div>
                                 </div>
                                 
-                                <div class="mb-3">
-                                    <label class="small fw-medium text-muted mb-1"><i class="fas fa-user-shield me-1"></i> Jefe Directo</label>
-                                    <select class="form-select bg-light border-0 rounded-2" name="mod_jefe" id="mod_jefe" required></select>
-                                </div>                
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="small fw-medium text-muted mb-1"><i class="fas fa-user-shield me-1"></i> Jefe Directo</label>
+                                        <select class="form-select bg-light border-0 rounded-2" name="mod_jefe" id="mod_jefe" required></select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="small fw-medium text-muted mb-1"><i class="fas fa-calendar-day me-1"></i> Fecha de Ingreso</label>
+                                        <input type="date" class="form-control bg-light border-0 rounded-2" name="mod_fechaIngreso" id="mod_fechaIngreso" required>
+                                    </div>
+                                </div>
                                 
                                 <div class="row g-3">
                                     <div class="col-md-4">
@@ -194,14 +205,14 @@
                                         <label class="small fw-medium text-muted mb-1">Sangre</label>
                                         <select class="form-select bg-light border-0 rounded-2" name="mod_tipoSangre" id="mod_tipoSangre" required>
                                             <option value="">Seleccionar...</option>
-                                            <option value="A+">A+</option>
-                                            <option value="A-">A-</option>
-                                            <option value="B+">B+</option>
-                                            <option value="B-">B-</option>
-                                            <option value="AB+">AB+</option>
-                                            <option value="AB-">AB-</option>
-                                            <option value="O+">O+</option>
-                                            <option value="O-">O-</option>
+                                            <option value="ARH+">ARH+</option>
+                                            <option value="ARH-">ARH-</option>
+                                            <option value="BRH+">BRH+</option>
+                                            <option value="BRH-">BRH-</option>
+                                            <option value="ABRH+">ABRH+</option>
+                                            <option value="ABRH-">ABRH-</option>
+                                            <option value="ORH+">ORH+</option>
+                                            <option value="ORH-">ORH-</option>
                                         </select>
                                     </div>
                                 </div>
@@ -223,10 +234,44 @@
                     </div>
                 </div>
             </div>
+            <!--MODAL CAMBIAR FOTO-->
+            <div class="modal fade" id="modal_cambiar_foto" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog modal-md modal-dialog-centered" role="document">
+                    <div class="modal-content border border-dark border-2">
+                        <div class="modal-header bg-secondary border-bottom-0 pt-0 px-4 pb-0">
+                            <h5 class="modal-title fw-semibold text-white h6 text-uppercase"><i class="fas fa-camera me-2"></i> Cambiar Foto del Colaborador</h5>
+                            <button type="button" class="btn-close small" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form id="form_cambiar_foto" enctype="multipart/form-data">
+                            <div class="modal-body px-4">
+                                <input type="hidden" id="modal_foto_noEmpleado" name="noEmpleado">
+                                <div class="row g-3 text-center">
+                                    <div class="col-6">
+                                        <label class="small fw-medium text-muted mb-2 d-block">Foto Actual</label>
+                                        <img id="modal_foto_actual" src="/incidencias/img/undraw_profile.svg" class="img-thumbnail rounded-circle" style="width:140px;height:140px;object-fit:cover;" onerror="this.onerror=null;this.src='/incidencias/img/undraw_profile.svg';">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="small fw-medium text-muted mb-2 d-block">Vista Previa</label>
+                                        <img id="modal_foto_preview" src="/incidencias/img/undraw_profile.svg" class="img-thumbnail rounded-circle" style="width:140px;height:140px;object-fit:cover;opacity:0.4;">
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <label class="small fw-medium text-muted mb-1">Selecciona una imagen (JPG/PNG, máx 2MB)</label>
+                                    <input type="file" id="modal_foto_archivo" name="foto" accept="image/jpeg,image/png" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                            <div class="modal-footer border-top-0 p-4">
+                                <button type="button" class="btn btn-sm btn-light fw-medium px-3 text-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-sm btn-dark fw-medium px-4"><i class="fas fa-save me-1"></i> Guardar Foto</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
             <!--MODAL TELEFONOS-->
             <div class="modal fade" id="modal_telefonos" tabindex="-1" role="dialog" aria-hidden="true">
                 <div class="modal-dialog modal-md modal-dialog-centered" role="document">
-                    <div class="modal-content border-0">
+                    <div class="modal-content border border-dark border-2">
                         <div class="modal-header bg-success border-bottom-0 pt-0 px-4 pb-0">
                             <h5 class="modal-title fw-semibold text-white h6 text-uppercase"><i class="fas fa-phone me-2"></i> Editar Teléfonos</h5>
                             <button type="button" class="btn-close small" data-bs-dismiss="modal" aria-label="Close"></button>

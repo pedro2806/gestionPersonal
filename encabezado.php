@@ -27,21 +27,21 @@
         <a class = "nav-link dropdown-toggle" href = "#" id = "userDropdown" role = "button"
             data-toggle = "dropdown" aria-haspopup = "true" aria-expanded = "false">
             <span class = "mr-2 d-none d-lg-inline text-gray-600 small">
-                <?php echo $_COOKIE['nombredelusuario']?>
+                <?php echo htmlspecialchars($_COOKIE['nombredelusuarioGP'] ?? '', ENT_QUOTES, 'UTF-8'); ?>
             </span>
             <?php
-            $currentURL = $_SERVER['REQUEST_URI']; // Obtiene la ruta actual de la URL
-
-            if (strpos($currentURL, "/incidencias/SalasDeJuntas/") !== false || 
-                strpos($currentURL, "/incidencias/inicio") !== false) {
-                echo '<img class="img-profile rounded-circle" 
-                    src="/incidencias/img/undraw_profile.svg" 
+                // En BD/cookie la foto se guarda como "img/ProfilePictures/X.jpg" (relativa
+                // al webroot de loginMaster). Prependemos "/loginMaster/" para una URL absoluta.
+                $fotoUsuario = $_COOKIE['fotoGP'] ?? '';
+                if (!empty($fotoUsuario)) {
+                    $srcFoto = (strpos($fotoUsuario, '/') === 0) ? $fotoUsuario : '/loginMaster/' . $fotoUsuario;
+                } else {
+                    $srcFoto = '/incidencias/img/undraw_profile.svg';
+                }
+                echo '<img class="img-profile rounded-circle"
+                    src="' . htmlspecialchars($srcFoto, ENT_QUOTES, 'UTF-8') . '"
+                    onerror="this.onerror=null;this.src=\'/incidencias/img/undraw_profile.svg\';"
                     style="width: 100%;">';
-            } else {
-                echo '<img class="img-profile rounded-circle" 
-                    src="/incidencias/img/undraw_profile.svg"  
-                    style="width: 100%;">';
-            }
             ?>
         </a>
         <!-- Dropdown - User Information -->

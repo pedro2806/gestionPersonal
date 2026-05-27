@@ -411,10 +411,11 @@ function abrir_modal_editar_usuario(noEmpleado) {
                 let u = res.data;
                 
                 // Inyectar valores al formulario del modal
-                $('#mod_noEmpleado').val(u.noEmpleado);
+                $('#mod_noEmpleado').val(u.noEmpleado).data('foto-actual', u.foto || '');
+                $('#modal_telefonos_noEmpleado').val(u.noEmpleado);
                 $('#mod_nombre').val(u.nombre);
                 $('#mod_correo').val(u.correo);
-                
+
                 $('#mod_departamento').val(u.departamento);
                 $('#mod_puesto').val(u.puesto);
                 $('#mod_jefe').val(u.jefe);
@@ -423,8 +424,9 @@ function abrir_modal_editar_usuario(noEmpleado) {
                 $('#mod_curp').val(u.curp);
                 $('#mod_nss').val(u.nss);
                 $('#mod_rfc').val(u.rfc);
-                $('#mod_tipoContrato').val(u.tipo_contrato);
-                $('#mod_tipoSangre').val(u.tipo_sangre);
+                $('#mod_tipoContrato').val(u.tipoContrato);
+                $('#mod_tipoSangre').val(u.tipoSangre);
+                $('#mod_fechaIngreso').val(u.fechaIngreso);
 
                 // Mostrar la ventana flotante
                 $('#modal_editar_usuario').modal('show');
@@ -488,90 +490,179 @@ function confirmar_baja_logica(noEmpleado, nombreCompleto) {
 }
 
 function abrir_modal_telefonos() {
+    cargar_telefonos_usuario();
     $('#modal_telefonos').modal('show');
 }
 
-function cargar_telefonos_usuario() {
-    let id_usuario = $('#usuario_destino_carga_id').val();
+function abrir_modal_cambiar_foto() {
+    let noEmpleado = $('#mod_noEmpleado').val();
+    let fotoRaw    = $('#mod_noEmpleado').data('foto-actual') || '';
+    // En BD se guarda como "img/ProfilePictures/X.jpg" relativo a loginMaster
+    let fotoActual = fotoRaw ? '../loginMaster/' + fotoRaw : '/incidencias/img/undraw_profile.svg';
+
+    $('#modal_foto_noEmpleado').val(noEmpleado);
+    $('#modal_foto_actual').attr('src', fotoActual);
+    $('#modal_foto_preview').attr('src', fotoActual).css('opacity', '0.4');
+    $('#modal_foto_archivo').val('');
+    $('#modal_cambiar_foto').modal('show');
+}
+
+// Vista previa al elegir archivo (con validación cliente)
+$(document).on('change', '#modal_foto_archivo', function() {
+    let file = this.files[0];
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+        Swal.fire('Tipo no permitido', 'Solo se aceptan imágenes JPG o PNG.', 'warning');
+        this.value = '';
+        return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+        Swal.fire('Archivo grande', 'La imagen no debe superar 2MB.', 'warning');
+        this.value = '';
+        return;
+    }
+
+    let reader = new FileReader();
+    reader.onload = function(e) {
+        $('#modal_foto_preview').attr('src', e.target.result).css('opacity', '1');
+    };
+    reader.readAsDataURL(file);
+});
+
+$(document).on('submit', '#form_cambiar_foto', function(e) {
+    e.preventDefault();
+    let file = $('#modal_foto_archivo')[0].files[0];
+    if (!file) {
+        Swal.fire('Sin archivo', 'Selecciona una imagen primero.', 'warning');
+        return;
+    }
+
+    let formData = new FormData();
+    formData.append('action', 'actualizar_foto_usuario');
+    formData.append('noEmpleado', $('#modal_foto_noEmpleado').val());
+    formData.append('foto', file);
+
     $.ajax({
         url: 'action_controller.php',
         type: 'POST',
-        data: { action: 'obtener_telefonos_usuario', id_usuario: id_usuario },
+        data: formData,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        success: function(res) {
+            if (res.status === 'success') {
+                Swal.fire('Guardado', res.message, 'success');
+                $('#modal_cambiar_foto').modal('hide');
+                // Sincronizar la URL recordada para la próxima apertura del modal
+                $('#mod_noEmpleado').data('foto-actual', res.foto_url);
+                cargar_tabla_administracion_docs();
+            } else {
+                Swal.fire('Error', res.message, 'error');
+            }
+        },
+        error: function() {
+            Swal.fire('Error', 'No se pudo contactar al servidor.', 'error');
+        }
+    });
+});
+
+function cargar_telefonos_usuario() {
+    let noEmpleado = $('#modal_telefonos_noEmpleado').val() || $('#mod_noEmpleado').val();
+    $('#contenedor_telefonos').html('<div class="text-center text-muted small py-2">Cargando...</div>');
+
+    $.ajax({
+        url: 'action_controller.php',
+        type: 'POST',
+        data: { action: 'obtener_telefonos_usuario', noEmpleado: noEmpleado },
         dataType: 'json',
         success: function(res) {
             if (res.status === 'success') {
                 let html = '';
                 res.data.forEach(function(t) {
-                    html += `<tr>
-                        <td>${t.tipo}</td>
-                        <td>${t.numero}</td>
-                        <td><button class="btn btn-sm btn-danger" onclick="eliminar_telefono(${t.id})">Eliminar</button></td>
-                    </tr>`;
+                    html += render_fila_telefono(t.id, t.telefono, t.extension);
                 });
-                $('#tbody_telefonos').html(html);
-            }
-        }
-    });
-}
-
-function eliminar_telefono(id_telefono) {
-    Swal.fire({
-        title: '¿Eliminar este teléfono?',
-        text: 'Esta acción no se puede deshacer.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#e74a3b',
-        cancelButtonColor: '#858796',
-        confirmButtonText: 'Sí, Eliminar',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.ajax({
-                url: 'action_controller.php',
-                type: 'POST',
-                data: { action: 'eliminar_telefono_usuario', id_telefono: id_telefono },
-                dataType: 'json',
-                success: function(res) {
-                    if (res.status === 'success') {
-                        Swal.fire('Eliminado', res.message, 'success');
-                        cargar_telefonos_usuario();
-                    } else {
-                        Swal.fire('Error', res.message, 'error');
-                    }
+                if (html === '') {
+                    html = '<div class="text-center text-muted small py-2">Sin teléfonos registrados.</div>';
                 }
-            });
+                $('#contenedor_telefonos').html(html);
+            } else {
+                $('#contenedor_telefonos').html('<div class="text-center text-danger small py-2">Error al cargar teléfonos.</div>');
+            }
+        },
+        error: function() {
+            $('#contenedor_telefonos').html('<div class="text-center text-danger small py-2">Error de red al cargar teléfonos.</div>');
         }
     });
 }
 
-$(document).on('submit', '#form_agregar_telefono', function(e) {
+function render_fila_telefono(id, telefono, extension) {
+    let idAttr = id ? `data-id="${id}"` : '';
+    let valTel = telefono != null ? String(telefono).replace(/"/g, '&quot;') : '';
+    let valExt = extension != null ? String(extension).replace(/"/g, '&quot;') : '';
+    return `
+        <div class="row g-2 align-items-end fila-telefono" ${idAttr}>
+            <div class="col-7">
+                <label class="small text-muted mb-1">Teléfono</label>
+                <input type="text" class="form-control form-control-sm" name="telefono[]" value="${valTel}">
+            </div>
+            <div class="col-4">
+                <label class="small text-muted mb-1">Extensión</label>
+                <input type="text" class="form-control form-control-sm" name="extension[]" value="${valExt}">
+            </div>
+            <div class="col-1 text-end">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="$(this).closest('.fila-telefono').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>`;
+}
+
+// Guardado batch: recolecta todas las filas del contenedor y reemplaza los teléfonos del empleado
+$(document).on('submit', '#form_modificar_telefonos', function(e) {
     e.preventDefault();
-    let id_usuario = $('#usuario_destino_carga_id').val();
-    let tipo = $('#nuevo_tipo_telefono').val();
-    let numero = $('#nuevo_numero_telefono').val();
+    let noEmpleado = $('#modal_telefonos_noEmpleado').val();
+    let ids = [];
+    let telefonos = [];
+    let extensiones = [];
+
+    $('#contenedor_telefonos .fila-telefono').each(function() {
+        let id  = parseInt($(this).data('id')) || 0;
+        let tel = $(this).find('input[name="telefono[]"]').val().trim();
+        let ext = $(this).find('input[name="extension[]"]').val().trim();
+        // Omitir filas nuevas completamente vacías
+        if (id === 0 && tel === '' && ext === '') return;
+        ids.push(id);
+        telefonos.push(tel);
+        extensiones.push(ext);
+    });
 
     $.ajax({
         url: 'action_controller.php',
         type: 'POST',
-        data: { action: 'agregar_telefono_usuario', id_usuario: id_usuario, tipo: tipo, numero: numero },
+        data: {
+            action: 'guardar_telefonos_usuario',
+            noEmpleado: noEmpleado,
+            id: ids,
+            telefono: telefonos,
+            extension: extensiones
+        },
         dataType: 'json',
         success: function(res) {
             if (res.status === 'success') {
-                Swal.fire('Agregado', res.message, 'success');
-                $('#form_agregar_telefono')[0].reset();
-                cargar_telefonos_usuario();
+                Swal.fire('Guardado', res.message, 'success');
+                $('#modal_telefonos').modal('hide');
+                cargar_tabla_administracion_docs();
             } else {
                 Swal.fire('Error', res.message, 'error');
             }
+        },
+        error: function() {
+            Swal.fire('Error', 'No se pudo contactar al servidor.', 'error');
         }
     });
 });
 
 function agregar_campo_telefono() {
-    let row = `<tr>
-        <td><input type="text" class="form-control form-control-sm" name="nuevo_tipo_telefono" placeholder="Tipo (Ej: Móvil, Casa)"></td>
-        <td><input type="text" class="form-control form-control-sm" name="nuevo_numero_telefono" placeholder="Número de Teléfono"></td>
-        <td><button class="btn btn-sm btn-danger" onclick="$(this).closest('tr').remove();">X</button></td>
-    </tr>`;
-    $('#tbody_nuevo_telefono').append(row);
+    $('#contenedor_telefonos').append(render_fila_telefono(null, '', ''));
 }
