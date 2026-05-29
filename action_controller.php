@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         'subido_por' => $doc['subido_por'],
                         'tipo_alcance' => 'Por Puesto',
                         'id_depto' => null,
-                        'nombre_depto' => 'Universal'
+                        'nombre_depto' => 'Personal'
                     ];
                 } else {
                     // Cargar de cajón el depto base si existe
@@ -298,7 +298,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             mysqli_query($conn, "INSERT INTO expediente_tipos_documentos (nombre_tipo, subido_por, tipo_alcance, requiere_jefe_admin, requiere_jefe_tecnico, requiere_calidad, requiere_rrhh) VALUES ('$nombre_tipo', '$subido_por', '$tipo_alcance', $req_admin, $req_tecnico, $req_calidad, $req_rrhh)");
             $response = ['status' => 'success', 'message' => 'Catálogo actualizado.'];
             break;
-// OPCIONES PARA EDITAR USUARIOS Y ASIGNAR JEFES TÉCNICOS
+
+
+    // OPCIONES PARA EDITAR USUARIOS Y ASIGNAR JEFES TÉCNICOS
         // 1. Obtener los datos completos de un usuario para cargar el formulario de edición
         case 'obtener_datos_usuario_edicion':
             $noEmpleado = intval($_POST['noEmpleado']);
@@ -311,6 +313,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
             break;
 
+        
         // 2. Procesar la actualización/modificación de los datos
         case 'modificar_usuario_sistema':
             $noEmpleado = intval($_POST['mod_noEmpleado']);
@@ -349,7 +352,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
             break;
 
-        // 3. BAJA LÓGICA: Cambiar estatus a 0 de forma segura
+        
+            // 3. BAJA LÓGICA: Cambiar estatus a 0 de forma segura
         case 'baja_logica_usuario':
             $noEmpleado = intval($_POST['noEmpleado']);
             
