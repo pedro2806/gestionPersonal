@@ -1,6 +1,6 @@
 <?php
 require_once 'conn.php';
-$id_usuario_sesion = isset($_COOKIE['id_usuarioGP']) ? intval($_COOKIE['id_usuarioGP']) : 276;
+$id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmpleadoGP']) : 276;
 ?>
 <!DOCTYPE html>
 <html lang="es">
