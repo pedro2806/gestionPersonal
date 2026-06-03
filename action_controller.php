@@ -197,20 +197,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         case 'listar_administracion_empleados':
             $query = "SELECT u.id, u.noEmpleado, u.nombre as nombreCompleto, d.departamento as depto_base,
-                        (SELECT COUNT(*) FROM expediente_documentos WHERE id_usuario = u.noEmpleado) as total_docs,
-                        (SELECT GROUP_CONCAT(CONCAT(jefes.nombre, ' (', depto_alcance.departamento, ')') SEPARATOR ', ') 
+                        (SELECT COUNT(edoc.id) FROM expediente_documentos edoc WHERE edoc.noEmpleado = u.noEmpleado) as total_docs,
+                        IFNULL((SELECT GROUP_CONCAT(CONCAT(jefes.nombre, ' (', depto_alcance.departamento, ')') SEPARATOR ', ') 
                             FROM expediente_jefes_tecnicos ejt
                             INNER JOIN usuarios jefes ON ejt.id_usuario_jefe_tecnico = jefes.id
                             INNER JOIN departamento depto_alcance ON ejt.id_departamento = depto_alcance.id
-                        WHERE ejt.id_usuario_empleado = u.noEmpleado) as jefes_tecnicos,
-                        (SELECT GROUP_CONCAT(jefes.noEmpleado SEPARATOR ',') 
+                        WHERE ejt.id_usuario_empleado = u.noEmpleado), 'N/A') as jefes_tecnicos,
+                        IFNULL((SELECT GROUP_CONCAT(jefes.noEmpleado SEPARATOR ',') 
                             FROM expediente_jefes_tecnicos ejt
                             INNER JOIN usuarios jefes ON ejt.id_usuario_jefe_tecnico = jefes.id
                             INNER JOIN departamento depto_alcance ON ejt.id_departamento = depto_alcance.id
-                        WHERE ejt.id_usuario_empleado = u.noEmpleado) as id_jefes_tecnicos,
+                        WHERE ejt.id_usuario_empleado = u.noEmpleado), 'N/A') as id_jefes_tecnicos,
                         p.puesto,
                         ja.nombre as jefe_administrativo, ja.noEmpleado as id_jefe_directo, u.estatus, u.foto as url_foto,  
-                        (SELECT GROUP_CONCAT(CONCAT(telefono, ' Ext. ', IFNULL(extension, 'N/A')) SEPARATOR ', ') FROM telefono WHERE noEmpleado = u.noEmpleado) AS telefonos
+                        IFNULL((SELECT GROUP_CONCAT(CONCAT(t.telefono, ' Ext. ', IFNULL(t.extension, 'N/A')) SEPARATOR ', ') FROM telefono t WHERE t.noEmpleado = u.noEmpleado), 'N/A') AS telefonos
                     FROM usuarios u
                     LEFT JOIN departamento d ON u.departamento = d.id
                     LEFT JOIN puesto p ON u.puesto = p.id
@@ -600,6 +600,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $response = ['status' => 'error', 'message' => 'Error en BD: ' . mysqli_error($conn)];
                 }
                 break;
+
+            // ============================================================================
+        // 🆕 CASO ADICIONAL: ALTA COMPLETA DE COLABORADORES EN EL EXPEDIENTE
+        // ============================================================================
+        case 'registrar_nuevo_empleado_sistema':
+            // Asegurar limpieza absoluta de datos obligatorios y numéricos
+            $noEmpleado    = intval($_POST['nuevo_noEmpleado']);
+            $nombre        = mysqli_real_escape_string($conn, $_POST['nuevo_nombre']);
+            $correo        = mysqli_real_escape_string($conn, $_POST['nuevo_correo']);
+            $sexo          = mysqli_real_escape_string($conn, $_POST['nuevo_sexo']);
+            $fechaIngreso  = mysqli_real_escape_string($conn, $_POST['nuevo_fechaIngreso']);
+            $departamento  = intval($_POST['nuevo_departamento']);
+            $puesto        = intval($_POST['nuevo_puesto']);
+            $jefe          = intval($_POST['nuevo_jefe']);
+            
+            // Campos opcionales o formateados en mayúsculas estrictas
+            $curp          = strtoupper(mysqli_real_escape_string($conn, trim($_POST['nuevo_curp'])));
+            $rfc           = strtoupper(mysqli_real_escape_string($conn, trim($_POST['nuevo_rfc'])));
+            $nss           = mysqli_real_escape_string($conn, trim($_POST['nuevo_nss']));
+            $tipoContrato  = mysqli_real_escape_string($conn, $_POST['nuevo_tipoContrato']);
+            $tipoSangre    = mysqli_real_escape_string($conn, $_POST['nuevo_tipoSangre']);
+            
+            // Valor por defecto para la foto de perfil inicial institucional
+            $foto_default  = "fotos_perfil/undraw_profile.svg";
+
+            if ($noEmpleado === 0 || empty($nombre) || empty($correo)) {
+                $response = ['status' => 'error', 'message' => 'Los campos esenciales (Nómina, Nombre y Correo) son obligatorios.'];
+                break;
+            }
+
+            // Validación preventiva de duplicidad de número de nómina corporativa
+            $check_duplicado = mysqli_query($conn, "SELECT noEmpleado FROM usuarios WHERE noEmpleado = $noEmpleado LIMIT 1");
+            if (mysqli_num_rows($check_duplicado) > 0) {
+                $response = ['status' => 'error', 'message' => "El número de empleado $noEmpleado ya se encuentra asignado a un colaborador activo."];
+                break;
+            }
+
+            // Query de inserción masiva clonando la estructura de tu tabla usuarios
+            $q_insert = "INSERT INTO usuarios 
+                            (noEmpleado, nombre, correo, sexo, fechaIngreso, departamento, puesto, jefe, curp, rfc, nss, tipoContrato, tipoSangre, foto, estatus) 
+                         VALUES 
+                            ($noEmpleado, '$nombre', '$correo', '$sexo', '$fechaIngreso', $departamento, $puesto, $jefe, '$curp', '$rfc', '$nss', '$tipoContrato', '$tipoSangre', '$foto_default', 1)";
+
+            if (mysqli_query($conn, $q_insert)) {
+                $response = [
+                    'status' => 'success', 
+                    'message' => '¡Colaborador creado con éxito! Se ha habilitado su perfil en la matriz de expediente general.'
+                ];
+            } else {
+                $response = ['status' => 'error', 'message' => 'Fallo operativo en la base de datos: ' . mysqli_error($conn)];
+            }
+            break;
+
+        // ============================================================================
+        // 🔬 CASO ADICIONAL: GUARDAR ASIGNACIÓN COMPUESTA DE JEFES TÉCNICOS
+        // ============================================================================
+        case 'guardar_assignacion_compuesta_jefes':
+            $id_emp = isset($_POST['id_usuario_empleado']) ? intval($_POST['id_usuario_empleado']) : 0;
+            $alcances = isset($_POST['alcances']) ? json_decode($_POST['alcances'], true) : [];
+
+            if ($id_emp > 0) {
+                // Se eliminan los alcances anteriores para evitar duplicados
+                mysqli_query($conn, "DELETE FROM expediente_jefes_tecnicos WHERE id_usuario_empleado = $id_emp");
+                
+                // Se insertan las filas validadas de la matriz de habilidades
+                foreach ($alcances as $a) {
+                    $id_jefe = intval($a['id_jefe_tecnico']);
+                    $id_depto = intval($a['id_departamento']);
+                    
+                    if ($id_jefe > 0 && $id_depto > 0) {
+                        mysqli_query($conn, "INSERT INTO expediente_jefes_tecnicos (id_usuario_empleado, id_usuario_jefe, id_departamento) VALUES ($id_emp, $id_jefe, $id_depto)");
+                        echo "Asignado Jefe Técnico ID $id_jefe al Empleado ID $id_emp para el Departamento ID $id_depto\n";
+                    }
+                }
+                $response = ['status' => 'success', 'message' => 'Matriz de habilidades y laboratorios asignados actualizada con éxito.'];
+            } else {
+                $response = ['status' => 'error', 'message' => 'No se recibió un número de empleado válido para la asignación.'];
+            }
+            break;
     }
 }
 echo json_encode($response);

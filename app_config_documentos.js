@@ -30,8 +30,8 @@ function inicializarTablaConfigDocs() {
                 "data": "subido_por",
                 "render": function(data) {
                     let badgeClass = 'bg-light text-dark border';
-                    if (data === 'RH') badgeClass = 'bg-warning text-white';
-                    if (data === 'Jefe Técnico') badgeClass = 'bg-dark text-white';
+                    if (data === 'RH') badgeClass = 'bg-warning-subtle text-warning-emphasis border-warning';
+                    if (data === 'Jefe Técnico') badgeClass = 'bg-dark-subtle text-dark border-dark';
                     return `<span class="badge ${badgeClass}">${data}</span>`;
                 }
             },
@@ -45,7 +45,7 @@ function inicializarTablaConfigDocs() {
             { 
                 "data": "perfil_puesto",
                 "render": function(data) {
-                    let cls = 'bg-secondary text-white';
+                    let cls = 'bg-secondary-subtle text-secondary border-secondary';
                     if (data === 'Solo Técnico') cls = 'bg-outline-danger border border-danger text-danger';
                     if (data === 'Solo Administrativo') cls = 'bg-outline-info border border-info text-info';
                     return `<span class="badge ${cls} font-weight-bold">${data}</span>`;
@@ -62,10 +62,10 @@ function inicializarTablaConfigDocs() {
                 "data": null,
                 "render": function(data, type, row) {
                     let firmas = [];
-                    if (parseInt(row.requiere_rrhh) === 1) firmas.push('<span class="badge bg-success p-1 m-1">RH</span>');
-                    if (parseInt(row.requiere_jefe_tecnico) === 1) firmas.push('<span class="badge bg-secondary p-1 m-1">J. Técnico</span>');
-                    if (parseInt(row.requiere_calidad) === 1) firmas.push('<span class="badge bg-warning text-dark p-1 m-1">Calidad</span>');
-                    if (parseInt(row.requiere_jefe_admin) === 1) firmas.push('<span class="badge bg-info text-dark p-1 m-1">J. Admin</span>');
+                    if (parseInt(row.requiere_rrhh) === 1) firmas.push('<span class="badge bg-success-subtle text-success-emphasis border-0 p-1 m-1">RH</span>');
+                    if (parseInt(row.requiere_jefe_tecnico) === 1) firmas.push('<span class="badge bg-secondary-subtle text-secondary border-0 p-1 m-1">J. Técnico</span>');
+                    if (parseInt(row.requiere_calidad) === 1) firmas.push('<span class="badge bg-warning-subtle text-warning-emphasis border-0 p-1 m-1">Calidad</span>');
+                    if (parseInt(row.requiere_jefe_admin) === 1) firmas.push('<span class="badge bg-info-subtle text-info-emphasis border-0 p-1 m-1">J. Admin</span>');
                     return firmas.length > 0 ? firmas.join(' ') : '<span class="text-muted small italic">Ninguna (Auto-aprueba)</span>';
                 }
             },

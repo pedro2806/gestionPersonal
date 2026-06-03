@@ -46,19 +46,6 @@
         </a>
         <!-- Dropdown - User Information -->
         <div class = "dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby = "userDropdown">
-            <!--<button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#staticBackdrop">
-                <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
-                Cambiar Contraseña
-            </button>
-
-            <a class = "dropdown-item" href = "#">
-                <i class = "fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
-                Settings
-            </a>
-            <a class = "dropdown-item" href = "#">
-                <i class = "fas fa-list fa-sm fa-fw mr-2 text-gray-400"></i>
-                Activity Log
-            </a>-->
             <div class = "dropdown-divider"></div>
             <a class = "dropdown-item" href = "#" data-toggle = "modal" data-target = "#logoutModalN">
                 <i class = "fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
@@ -87,68 +74,7 @@
         </div>
     </div>
     
-    <script>
-    // Función para mostrar/ocultar contraseñas
-    /*document.getElementById('showPassword').addEventListener('change', function () {
-        var passwordField = document.getElementById('nuevapass');
-        var confirmPasswordField = document.getElementById('confirmapass');
-        
-        if (this.checked) {
-          // Mostrar contraseñas (tipo 'text')
-            passwordField.type = 'text';
-            confirmPasswordField.type = 'text';
-        } else {
-          // Ocultar contraseñas (tipo 'password')
-          passwordField.type = 'password';
-          confirmPasswordField.type = 'password';
-        }
-    });*/
-    
-    //Funcion para validar las contraseñas
-    function validarContrasenas() {
-        var password = $('#nuevapass').val()
-        var confirmPassword = $('#confirmapass').val()
-        var error = document.getElementById("error");
-
-        // Si las contraseñas no coinciden
-        if (password !== confirmPassword) {
-            $('#msgPassword').text("Las constraseñas no coinciden."); 
-        } else {
-            Confirmar();
-        }
-    }
-    
-    //Funcion para Enviar los datos
-    function Confirmar(){
-        var password = $('#nuevapass').val();
-        var noEmpleado = $('#noEmpleado').val();
-        var accion = "CambioPassword";
-        
-        $.ajax({
-            url: 'acciones_contrasena.php',
-            method: 'POST',
-            async: false,
-            dataType: 'json',
-            data:{accion, password, noEmpleado},
-            success: function(Registros) {
-                Swal.fire({
-                    title: "Confirmado!",
-                    text: "Contraseña cambiada!",
-                    icon: "success",
-                    timer: 2000,
-                    timerProgressBar: true
-                }).then(function() {
-                    // Limpiar los campos después de cerrar la alerta
-                    $('#nuevapass').val('');
-                    $('#confirmapass').val('');
-                    $('#staticBackdrop').modal('hide');
-                });
-            },error: function(jqXHR, textStatus, errorThrown) {
-                console.error('Error al aplicar el cambio', error);
-            }
-        });
-    }
-
+    <script>    
     //Funcion para leer cookies
     function getCookie(name) {
         let value = "; " + document.cookie;

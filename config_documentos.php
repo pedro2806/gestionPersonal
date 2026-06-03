@@ -18,11 +18,28 @@ include 'conn.php';
     <link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css" rel="stylesheet">
 
     <style>
-        .table-dark-custom { background-color: #2c3e50 !important; color: #ffffff; }
-        .badge-tecnico { background-color: #e7883b !important; color: #ffffff; font-weight: bold; }
-        .badge-administrativo { background-color: #367acc !important; color: #ffffff; font-weight: bold; }
-        .badge-universal { background-color: #858796; color: #ffffff; }
-        .badge-scope { background-color: #75d6f3; color: #ffffff; }
+        .table-dark-custom { 
+    background-color: #2c3e50 !important; 
+    color: #ffffff; 
+}
+.badge-tecnico { 
+    background-color: #fef9c3 !important; /* bg-warning-subtle */
+    color: #a16207 !important;            /* text-warning-emphasis */
+    font-weight: bold; 
+}
+.badge-administrativo { 
+    background-color: #e0f2fe !important; /* bg-info-subtle / bg-primary-subtle */
+    color: #0369a1 !important;            /* text-info-emphasis */
+    font-weight: bold; 
+}
+.badge-universal { 
+    background-color: #f1f5f9 !important; /* bg-light-subtle */
+    color: #475569 !important;            /* text-secondary-emphasis */
+}
+.badge-scope { 
+    background-color: #dcfce7 !important; /* bg-success-subtle oficial */
+    color: #15803d !important;            /* text-success-emphasis oficial */
+}
     </style>
 </head>
 

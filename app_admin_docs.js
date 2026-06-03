@@ -48,6 +48,9 @@ function cargar_tabla_administracion_docs() {
                 // Inicializar DataTables en español
                 $('#tabla_admin_docs').DataTable({
                     responsive: true,
+                    searching: true,
+                    pageLength: 10,
+                    dom: 'rtip',
                     language: {
                         url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
                     }

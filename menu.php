@@ -51,7 +51,7 @@
             <a class="collapse-item" href="admin_personal">Administrar Personal</a>
             <a class="collapse-item" href="config_documentos">Configurar Documentos</a>
             <a class="collapse-item" href="validacion">Auditoría y Validación</a>
-            <a class="collapse-item" href="reportes">Reportes</a>            
+            <a class="collapse-item" href="organigrama">Organigrama</a>            
         </div>
     </div>
 </li>
