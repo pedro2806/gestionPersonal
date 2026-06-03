@@ -652,6 +652,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $response = ['status' => 'error', 'message' => 'Fallo operativo en la base de datos: ' . mysqli_error($conn)];
             }
             break;
+
+        case 'guardar_jefes_tecnicos_empleado':
+
+            $id_empleado = intval($_POST['id_usuario_empleado']);
+            $alcances = isset($_POST['alcances']) ? json_decode($_POST['alcances'], true) : [];
+
+            mysqli_begin_transaction($conn);
+
+            foreach ($alcances as $alcance) {
+
+                $id_jefe  = intval($alcance['id_jefe_tecnico']);
+                $id_depto = intval($alcance['id_departamento']);
+
+                mysqli_query(
+                    $conn,
+                    "INSERT INTO expediente_jefes_tecnicos
+                    (id_usuario_empleado, id_usuario_jefe_tecnico, id_departamento)
+                    VALUES
+                    ($id_empleado, $id_jefe, $id_depto)"
+                );
+            }
+
+            mysqli_commit($conn);
+
+            $response = [
+                'status' => 'success',
+                'message' => 'Jefes técnicos registrados con éxito.'
+            ];
+
+        break;
+
+                
     }
 }
 echo json_encode($response);
