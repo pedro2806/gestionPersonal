@@ -262,7 +262,6 @@ function cargar_tabla_administracion_docs() {
             if (!$.fn.DataTable.isDataTable('#tabla_admin_docs')) {
                 $('#tabla_admin_docs').DataTable({
                     "responsive": true,
-                    "searching": true,
                     "pageLength": 10,
                     "dom": 'rtip',
                     "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" }
@@ -606,8 +605,6 @@ $(document).on('submit', '#form_modificar_telefonos', function(e) {
     });
 });
 
-
-
 function agregar_campo_telefono() { $('#contenedor_telefonos').append(render_fila_telefono(null, '', '')); }
 
 // ============================================================================
@@ -650,54 +647,6 @@ function guardar_nuevo_empleado_sistema() {
         error: function() {
             Swal.close();
             Swal.fire('Fallo de Conexión', 'No se detectó el caso en action_controller.php, verifica tu backend.', 'error');
-        }
-    });
-}
-
-// ============================================================================
-// 🔬 FUNCIÓN ADICIONAL: GUARDAR ASIGNACIÓN COMPUESTA DE JEFES TÉCNICOS
-// ============================================================================
-function guardar_assignacion_compuesta_jefes() {
-    let arr = [];
-    // Recorremos cada fila de la matriz de habilidades en el modal
-    $('.fila-alcance').each(function() {
-        let jefe = $(this).find('.select-jefe-tabla').val();
-        let depto = $(this).find('.select-depto-tabla').val();
-        
-        // Evitamos enviar filas vacías
-        if (jefe && depto) {
-            arr.push({ 
-                id_jefe_tecnico: jefe, 
-                id_departamento: depto 
-            });
-        }
-    });
-
-    $.ajax({
-        url: 'action_controller.php',
-        type: 'POST',
-        data: { 
-            action: 'guardar_assignacion_compuesta_jefes',
-            id_usuario_empleado: $('#modal_jt_id_empleado').val(), 
-            alcances: JSON.stringify(arr) 
-        },
-        dataType: 'json',
-        beforeSend: function() {
-            Swal.fire({ title: 'Actualizando habilidades...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
-        },
-        success: function(res) {
-            Swal.close();
-            if (res.status === 'success') {
-                $('#modal_gestion_jefes_tecnicos').modal('hide');
-                Swal.fire('¡Guardado!', res.message, 'success');
-                cargar_tabla_administracion_docs(); // Refresca la tabla principal
-            } else {
-                Swal.fire('Error', res.message, 'error');
-            }
-        },
-        error: function() {
-            Swal.close();
-            Swal.fire('Error', 'No se pudo conectar con el servidor para guardar los alcances.', 'error');
         }
     });
 }

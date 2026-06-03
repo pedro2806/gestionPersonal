@@ -652,33 +652,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $response = ['status' => 'error', 'message' => 'Fallo operativo en la base de datos: ' . mysqli_error($conn)];
             }
             break;
-
-        // ============================================================================
-        // 🔬 CASO ADICIONAL: GUARDAR ASIGNACIÓN COMPUESTA DE JEFES TÉCNICOS
-        // ============================================================================
-        case 'guardar_assignacion_compuesta_jefes':
-            $id_emp = isset($_POST['id_usuario_empleado']) ? intval($_POST['id_usuario_empleado']) : 0;
-            $alcances = isset($_POST['alcances']) ? json_decode($_POST['alcances'], true) : [];
-
-            if ($id_emp > 0) {
-                // Se eliminan los alcances anteriores para evitar duplicados
-                mysqli_query($conn, "DELETE FROM expediente_jefes_tecnicos WHERE id_usuario_empleado = $id_emp");
-                
-                // Se insertan las filas validadas de la matriz de habilidades
-                foreach ($alcances as $a) {
-                    $id_jefe = intval($a['id_jefe_tecnico']);
-                    $id_depto = intval($a['id_departamento']);
-                    
-                    if ($id_jefe > 0 && $id_depto > 0) {
-                        mysqli_query($conn, "INSERT INTO expediente_jefes_tecnicos (id_usuario_empleado, id_usuario_jefe, id_departamento) VALUES ($id_emp, $id_jefe, $id_depto)");
-                        echo "Asignado Jefe Técnico ID $id_jefe al Empleado ID $id_emp para el Departamento ID $id_depto\n";
-                    }
-                }
-                $response = ['status' => 'success', 'message' => 'Matriz de habilidades y laboratorios asignados actualizada con éxito.'];
-            } else {
-                $response = ['status' => 'error', 'message' => 'No se recibió un número de empleado válido para la asignación.'];
-            }
-            break;
     }
 }
 echo json_encode($response);
