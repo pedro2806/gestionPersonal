@@ -58,7 +58,7 @@
 
 <hr class="sidebar-divider my-0 alert-light">
 <li class = "nav-item">
-    <a class = "nav-link" href = "#" data-toggle = "modal" data-target = "#logoutModalN">
+    <a class = "nav-link" href = "../loginMaster/inicio">
         <i class = "fas fa-sign-out-alt"></i>
         Salir
     </a>

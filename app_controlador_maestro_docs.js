@@ -650,3 +650,21 @@ function guardar_nuevo_empleado_sistema() {
         }
     });
 }
+
+function guardar_assignacion_compuesta_jefes () {
+    let arr = [];   
+    $('.fila-alcance').each(function() {
+        arr.push({ id_jefe_tecnico: $(this).find('.select-jefe-tabla').val(), id_departamento: $(this).find('.select-depto-tabla').val() });
+    });
+    $.ajax({
+        url: 'action_controller.php',
+        type: 'POST',
+        data: { action: 'guardar_jefes_tecnicos_empleado', id_usuario_empleado: $('#modal_jt_id_empleado').val(), alcances: JSON.stringify(arr) },
+        dataType: 'json',   
+        success: function() {
+            $('#modal_gestion_jefes_tecnicos').modal('hide');
+            Swal.fire('Guardado', 'Habilidades actualizadas.', 'success');
+            cargar_tabla_administracion_docs();
+        }
+    });
+}
