@@ -235,7 +235,7 @@ function cargar_tabla_administracion_docs() {
                     '<span class="badge bg-danger-subtle text-danger-emphasis border-0 px-2 py-1 font-weight-medium">Inactivo</span>';
 
                 html += `<tr>
-                    <td class="font-weight-bold text-dark ps-3"><strong>${emp.noEmpleado}</strong><img src="../loginMaster/${emp.url_foto}" alt="Foto" class="img-thumbnail ms-2" style="max-width: 50px; max-height: 40px;"></td>
+                    <td class="font-weight-bold text-dark ps-3"><strong>${emp.noEmpleado}</strong></td>
                     <td class="font-weight-bold text-dark"><strong>${emp.nombreCompleto}</strong></td>
                     <td>${emp.telefonos}</td>   
                     <td><span class="small font-weight-bold text-uppercase text-muted">${emp.depto_base}</span></td>
