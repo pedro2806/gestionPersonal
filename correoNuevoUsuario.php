@@ -116,7 +116,7 @@ $mail->Body = '
                             <table width="100%" cellpadding="0" cellspacing="0" style="margin: 10px 0;">
                                 <tr>
                                     <td align="center">
-                                        <img src="img/cambiarPass.png" alt="Instrucciones para cambiar contraseña" style="max-width: 100%; height: auto; border-radius: 8px;">
+                                        <img src="https://messbook.com.mx/gestionPersonal/img/cambiarPass.png" alt="Instrucciones para cambiar contraseña" style="max-width: 100%; height: auto; border-radius: 8px;">
                                     </td>
                                 </tr>
                                 <tr>
