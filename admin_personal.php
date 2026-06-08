@@ -41,7 +41,7 @@ require_once 'conn.php';
                             <div class="d-flex align-items-center justify-content-between mb-4 py-2 border-bottom border-light">
                                 <div>
                                     <h5 class="font-weight-bold text-dark mb-1">Administración de Personal</h5>
-                                    <p class="text-muted small mb-0">Gestión de colaboradores, asignación de laboratorios técnicos y expedientes institucionales.</p>
+                                    <p class="text-muted small mb-0">Gestión de colaboradores/Asignación de laboratorios técnicos</p>
                                 </div>
                                 <button class="btn btn-sm btn-dark font-weight-bold text-uppercase px-3 py-2 rounded shadow-none" onclick="abrir_modal_nuevo_empleado()">
                                     <i class="fas fa-user-plus mr-2"></i>Nuevo Empleado
@@ -49,7 +49,7 @@ require_once 'conn.php';
                             </div>
 
                             <div class="table-responsive">
-                                <table id="tabla_admin_docs" class="table table-hover align-middle bg-white rounded-3 overflow-hidden shadow-sm small text-secondary" width="100%">
+                                <table id="tabla_admin_personal" class="table table-hover align-middle bg-white rounded-3 overflow-hidden shadow-sm small text-secondary" width="100%">
                                     <thead class="table-light text-uppercase text-muted border-bottom" style="font-size: 0.72rem; letter-spacing: 0.03em;">
                                         <tr>
                                             <th class="py-3 ps-3 text-start">No. Empleado</th>
@@ -87,8 +87,8 @@ require_once 'conn.php';
                             <div class="modal-body p-4">
                                 <div class="row g-3">
                                     <div class="col-md-3">
-                                        <label class="small text-muted font-weight-bold mb-1">No. Empleado / Nómina</label>
-                                        <input type="number" class="form-control shadow-none" name="nuevo_noEmpleado" required placeholder="Ej: 276">
+                                        <label class="small text-muted font-weight-bold mb-1">No. Empleado</label>
+                                        <input type="number" class="form-control shadow-none" name="nuevo_noEmpleado"  id="nuevo_noEmpleado" required placeholder="Ej: 276" readonly>
                                     </div>
                                     <div class="col-md-9">
                                         <label class="small text-muted font-weight-bold mb-1">Nombre Completo</label>
@@ -159,7 +159,7 @@ require_once 'conn.php';
                             </div>
                             <div class="modal-footer bg-light">
                                 <button type="button" class="btn btn-sm btn-secondary font-weight-bold" data-bs-dismiss="modal">Cancelar</button>
-                                <button type="submit" class="btn btn-sm btn-dark font-weight-bold px-4 shadow-none">Guardar Registro</button>
+                                <button type="button" onclick="guardar_nuevo_empleado_sistema()" class="btn btn-sm btn-dark font-weight-bold px-4 shadow-none">Guardar Registro</button>
                             </div>
                         </form>
                     </div>

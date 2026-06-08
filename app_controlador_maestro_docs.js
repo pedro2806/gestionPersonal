@@ -17,10 +17,10 @@ $(document).ready(function() {
     } else if (contexto === 'Administracion') {
         cargar_tabla_administracion_docs();
         
-        $('#form_registrar_nuevo_empleado').on('submit', function(e) {
+        /*$('#form_registrar_nuevo_empleado').on('submit', function(e) {
             e.preventDefault();
             guardar_nuevo_empleado_sistema();
-        });
+        });*/
     } else if (contexto === 'Configuracion') {
         cargar_tabla_config_catalogo();
     }
@@ -259,12 +259,14 @@ function cargar_tabla_administracion_docs() {
             });
             $('#tbody_admin_docs').html(html);
             
-            if (!$.fn.DataTable.isDataTable('#tabla_admin_docs')) {
-                $('#tabla_admin_docs').DataTable({
+            if (!$.fn.DataTable.isDataTable('#tabla_admin_personal')) {
+                $('#tabla_admin_personal').DataTable({
                     "responsive": true,
                     "pageLength": 10,
-                    "dom": 'rtip',
-                    "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" }
+                    "dom": 'frtip',
+                    "language": { 
+                        "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" 
+                    }
                 });
             }
         }
@@ -614,6 +616,7 @@ function agregar_campo_telefono() { $('#contenedor_telefonos').append(render_fil
 function abrir_modal_nuevo_empleado() {
     $('#form_registrar_nuevo_empleado')[0].reset();
     
+    obtener_ultimo_no_empleado();
     // Inyectamos de forma cruzada toda la matriz de catálogos maestros que ya tenemos en memoria
     $('#select_nuevo_puesto').html(cache_jefes_html || '<option value="">No se encontraron puestos activos</option>');
     $('#select_nuevo_departamento').html(cache_deptos_html || '<option value="">No se encontraron departamentos activos</option>');
@@ -625,6 +628,8 @@ function abrir_modal_nuevo_empleado() {
 function guardar_nuevo_empleado_sistema() {
     let formData = $('#form_registrar_nuevo_empleado').serialize();
     formData += '&action=registrar_nuevo_empleado_sistema';
+
+    email = $('#nuevo_correo').val(); // Capturamos el correo para usarlo después en el envío del correo de bienvenida
 
     $.ajax({
         url: 'action_controller.php',
@@ -639,7 +644,24 @@ function guardar_nuevo_empleado_sistema() {
             if (res.status === 'success') {
                 Swal.fire({ icon: 'success', title: '¡Guardado!', text: res.message, timer: 1500, showConfirmButton: false });
                 $('#modal_nuevo_empleado').modal('hide');
-                cargar_tabla_administracion_docs(); 
+                cargar_tabla_administracion_docs();
+                //enviar correo de bienvenida al nuevo empleado
+                $.ajax({
+                    url: 'correoNuevoUsuario.php',
+                    type: 'POST',
+                    data: { 
+                        action: 'recover_password', 
+                        email: res.correo 
+                    },
+                    dataType: 'json',
+                    success: function(res) {
+                        //alert('Correo de bienvenida enviado al nuevo empleado.');
+                    },
+                    error: function() {
+                        alert('Error al enviar correo de bienvenida.');
+                    }
+                });
+
             } else {
                 Swal.fire('Atención', res.message, 'warning');
             }
@@ -665,6 +687,23 @@ function guardar_assignacion_compuesta_jefes () {
             $('#modal_gestion_jefes_tecnicos').modal('hide');
             Swal.fire('Guardado', 'Habilidades actualizadas.', 'success');
             cargar_tabla_administracion_docs();
+        }
+    });
+}
+
+//obtener  ultimo NoEmpleado omitiendo los mayores a 614
+function obtener_ultimo_no_empleado() {
+    $.ajax({
+        url: 'action_controller.php',
+        type: 'POST',
+        data: { action: 'obtener_ultimo_no_empleado' },
+        dataType: 'json',
+        success: function(res) {
+            if (res.status === 'success') {
+                $('#nuevo_noEmpleado').val(res.ultimo_no_empleado + 1);
+            } else {
+                Swal.fire('Error', res.message, 'error');
+            }
         }
     });
 }

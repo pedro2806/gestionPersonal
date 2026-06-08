@@ -620,7 +620,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $rfc           = strtoupper(mysqli_real_escape_string($conn, trim($_POST['nuevo_rfc'])));
             $nss           = mysqli_real_escape_string($conn, trim($_POST['nuevo_nss']));
             $tipoContrato  = mysqli_real_escape_string($conn, $_POST['nuevo_tipoContrato']);
-            $tipoSangre    = mysqli_real_escape_string($conn, $_POST['nuevo_tipoSangre']);
+            $tipoSangre = mysqli_real_escape_string($conn, $_POST['nuevo_tipoSangre'] ?? '');
             
             // Valor por defecto para la foto de perfil inicial institucional
             $foto_default  = "fotos_perfil/undraw_profile.svg";
@@ -637,17 +637,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 break;
             }
 
+            $usuario = $correo; // Asumimos que el correo es el usuario de inicio de sesión
+            // Generar contraseña MD5 a partir del usuario (sin el dominio @mess.com.mx)
+            $user_part = '';
+            if (stripos($correo, '@mess.com.mx') !== false) {
+                $user_part = str_ireplace('@mess.com.mx', '', $correo);
+            } else {
+                $user_part = strstr($correo, '@', true) ?: $correo;
+            }
+            $password = md5($user_part);
+                
             // Query de inserción masiva clonando la estructura de tu tabla usuarios
             $q_insert = "INSERT INTO usuarios 
-                            (noEmpleado, nombre, correo, sexo, fechaIngreso, departamento, puesto, jefe, curp, rfc, nss, tipoContrato, tipoSangre, foto, estatus) 
-                         VALUES 
-                            ($noEmpleado, '$nombre', '$correo', '$sexo', '$fechaIngreso', $departamento, $puesto, $jefe, '$curp', '$rfc', '$nss', '$tipoContrato', '$tipoSangre', '$foto_default', 1)";
+                            (noEmpleado, nombre, correo, sexo, fechaIngreso, departamento, puesto, jefe, curp, rfc, nss, tipoContrato, tipoSangre, foto, estatus, usuario, password, password_restaurar) 
+                        VALUES 
+                            ($noEmpleado, '$nombre', '$correo', '$sexo', '$fechaIngreso', $departamento, $puesto, $jefe, '$curp', '$rfc', '$nss', '$tipoContrato', '$tipoSangre', '$foto_default', 1, '$usuario', '$password', '$user_part')";
 
             if (mysqli_query($conn, $q_insert)) {
-                $response = [
-                    'status' => 'success', 
-                    'message' => '¡Colaborador creado con éxito! Se ha habilitado su perfil en la matriz de expediente general.'
-                ];
+    
+                // Si la inserción del nuevo empleado fue exitosa, procedemos a crear sus accesos a los sistemas
+                $q_insert_accesos = "INSERT INTO `accesos` (`id`, `noEmpleado`, `sistema`, `estatus`) VALUES 
+                                    (NULL, $noEmpleado, 'divIncidencias', '1'), 
+                                    (NULL, $noEmpleado, 'divControlVehicular', '1'), 
+                                    (NULL, $noEmpleado, 'divCapacitacion', '1'),
+                                    (NULL, $noEmpleado, 'divVacaciones', '1');";
+                
+                // Validamos que la inserción de accesos también sea exitosa
+                if (mysqli_query($conn, $q_insert_accesos)) {
+                    $response = [
+                        'status' => 'success', 
+                        'title' => '¡Excelente!',
+                        'message' => '¡Colaborador creado con éxito! Se ha habilitado su perfil en la matriz de expediente general.',
+                        'correo' => $correo
+                        ];  
+                } else {
+                    // Falló la inserción de accesos (puedes hacer un log de mysqli_error($conn) aquí si quieres)
+                    $response = [
+                        'status' => 'error',
+                        'title' => 'Error de accesos',
+                        'message' => 'El colaborador se creó, pero hubo un problema al asignar sus accesos automáticos.'
+                    ];
+                }
+
             } else {
                 $response = ['status' => 'error', 'message' => 'Fallo operativo en la base de datos: ' . mysqli_error($conn)];
             }
@@ -681,6 +712,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'message' => 'Jefes técnicos registrados con éxito.'
             ];
 
+        break;
+        case 'obtener_ultimo_no_empleado':
+            $query = "SELECT MAX(noEmpleado) AS max_noEmpleado FROM usuarios where noEmpleado < 1000";
+            $result = mysqli_query($conn, $query);
+            $row = mysqli_fetch_assoc($result);
+            $response = ['status' => 'success', 'ultimo_no_empleado' => $row['max_noEmpleado']];
         break;
 
                 
