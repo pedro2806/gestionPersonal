@@ -196,7 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             break;
 
         case 'listar_administracion_empleados':
-            $query = "SELECT u.id, u.noEmpleado, u.nombre as nombreCompleto, d.departamento as depto_base,
+            $query = "SELECT u.id, u.noEmpleado, u.nombre as nombreCompleto, d.departamento as depto_base, u.correo,
                         (SELECT COUNT(edoc.id) FROM expediente_documentos edoc WHERE edoc.noEmpleado = u.noEmpleado) as total_docs,
                         IFNULL((SELECT GROUP_CONCAT(CONCAT(jefes.nombre, ' (', depto_alcance.departamento, ')') SEPARATOR ', ') 
                             FROM expediente_jefes_tecnicos ejt

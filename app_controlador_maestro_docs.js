@@ -236,7 +236,8 @@ function cargar_tabla_administracion_docs() {
 
                 html += `<tr>
                     <td class="font-weight-bold text-dark ps-3"><strong>${emp.noEmpleado}</strong></td>
-                    <td class="font-weight-bold text-dark"><strong>${emp.nombreCompleto}</strong></td>
+                    <td class="font-weight-bold text-dark"><strong>${emp.nombreCompleto} / ${emp.correo}</strong></td>
+                    <td>${emp.jefe_administrativo || 'No asignado'}</td>
                     <td>${emp.telefonos}</td>   
                     <td><span class="small font-weight-bold text-uppercase text-muted">${emp.depto_base}</span></td>
                     <td>${emp.jefes_tecnicos || '<span class="text-muted small italic">Solo Base</span>'}</td>

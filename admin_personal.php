@@ -37,12 +37,15 @@ require_once 'conn.php';
                     <!-- SECCIÓN PRINCIPAL: CONTROL DE PERSONAL (ESTILO MINIMALISTA NATIVO) -->
                     <div class="card border-0 bg-transparent mb-5">
                         <div class="card-body p-0">
-                            
                             <div class="d-flex align-items-center justify-content-between mb-4 py-2 border-bottom border-light">
                                 <div>
                                     <h5 class="font-weight-bold text-dark mb-1">Administración de Personal</h5>
                                     <p class="text-muted small mb-0">Gestión de colaboradores/Asignación de laboratorios técnicos</p>
                                 </div>
+                                <!-- dashhboard_personal.php es la vista de resumen general, admin_personal.php es la vista de gestión detallada -->
+                                <button class="btn btn-sm btn-outline-secondary font-weight-bold" onclick="window.location.href='dashboard_personal.php'">
+                                    <i class="fas fa-chart-pie mr-2"></i> Ver Resumen General
+                                </button>                            
                                 <button class="btn btn-sm btn-dark font-weight-bold text-uppercase px-3 py-2 rounded shadow-none" onclick="abrir_modal_nuevo_empleado()">
                                     <i class="fas fa-user-plus mr-2"></i>Nuevo Empleado
                                 </button>
@@ -52,14 +55,15 @@ require_once 'conn.php';
                                 <table id="tabla_admin_personal" class="table table-hover align-middle bg-white rounded-3 overflow-hidden shadow-sm small text-secondary" width="100%">
                                     <thead class="table-light text-uppercase text-muted border-bottom" style="font-size: 0.72rem; letter-spacing: 0.03em;">
                                         <tr>
-                                            <th class="py-3 ps-3 text-start">No. Empleado</th>
-                                            <th class="py-3">Nombre Completo</th>
-                                            <th class="py-3">Teléfonos</th>
-                                            <th class="py-3">Departamento Base</th>
-                                            <th class="py-3">Laboratorios Extras</th>
-                                            <th class="py-3 text-center">Estatus</th>
-                                            <th class="py-3 text-center">Doctos</th>
-                                            <th class="py-3 text-center pe-3" style="width: 140px;">Acciones</th>
+                                            <th class="py-1 ps-3 text-start">No. Emp</th>
+                                            <th class="py-1">Nombre Completo / Correo</th>
+                                            <th class="py-1">Jefe Inmediato</th>
+                                            <th class="py-1">Teléfonos</th>
+                                            <th class="py-1">Departamento Base</th>
+                                            <th class="py-1">Laboratorios Extras</th>
+                                            <th class="py-1 text-center">Estatus</th>
+                                            <th class="py-1 text-center">Doctos</th>
+                                            <th class="py-1 text-center pe-3" style="width: 140px;">Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody id="tbody_admin_docs" class="border-0">
