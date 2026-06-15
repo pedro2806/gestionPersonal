@@ -235,14 +235,18 @@ function cargar_tabla_administracion_docs() {
                     '<span class="badge bg-danger-subtle text-danger-emphasis border-0 px-2 py-1 font-weight-medium">Inactivo</span>';
 
                 html += `<tr>
-                    <td class="font-weight-bold text-dark ps-3"><strong>${emp.noEmpleado}</strong></td>
-                    <td class="font-weight-bold text-dark"><strong>${emp.nombreCompleto} / ${emp.correo}</strong></td>
+                    <td class="font-weight-bold text-dark ps-3"><strong>${emp.nombreCompleto} - <strong>${emp.noEmpleado} / </strong> ${emp.correo}</strong></td>
                     <td>${emp.jefe_administrativo || 'No asignado'}</td>
                     <td>${emp.telefonos}</td>   
                     <td><span class="small font-weight-bold text-uppercase text-muted">${emp.depto_base}</span></td>
                     <td>${emp.jefes_tecnicos || '<span class="text-muted small italic">Solo Base</span>'}</td>
                     <td class="text-center">${badgeEstatus}</td>
-                    <td class="text-center font-weight-bold">${emp.total_docs}</td>
+                    <td class="text-center font-weight-bold">
+                        ${emp.diasdisponibles}
+                        <button class="btn btn-sm btn-link text-primary p-1" onclick="abrir_modal_diasVacaciones(${emp.noEmpleado})" title="Ver Detalle">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
                     <td class="text-center pe-3">
                         <div class="d-flex justify-content-center gap-1">
                             <button class="btn btn-sm btn-link text-warning p-1" onclick="abrir_modal_editar_usuario(${emp.noEmpleado})" title="Editar Colaborador">
@@ -269,6 +273,35 @@ function cargar_tabla_administracion_docs() {
                         "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" 
                     }
                 });
+            }
+        }
+    });
+}
+
+function abrir_modal_diasVacaciones(noEmpleado) {
+    $.ajax({
+        url: 'action_controller.php',
+        type: 'POST',
+        data: { action: 'obtener_dias_vacaciones_usuario', noEmpleado: noEmpleado },
+        dataType: 'json',
+        success: function(res) {
+            if (res.status === 'success' && res.data && res.data.length > 0) {
+                // Creamos un atajo al primer registro del array data
+                var empleado = res.data[0];
+
+                // Pintamos usando el objeto 'empleado'
+                $('#modal_dv_nombre').text(empleado.nombre);
+                $('#modal_dv_antiguedad').text(empleado.antiguedad + ' años');
+                $('#modal_dv_diasSol').text(empleado.diasSol);
+                $('#modal_dv_dias_ley_actual').text(empleado.dias_ley_actual);
+                $('#modal_dv_diasdisponibles').text(empleado.diasdisponibles);
+                $('#modal_dv_fechaIngreso').text(empleado.fechaIngreso);
+                $('#modal_dv_noempleado').text(empleado.noEmpleado);
+
+                // 3. Mostrar el modal
+                $('#modal_gestion_dias_vacaciones').modal('show');
+            } else {
+                Swal.fire('Error', 'No se encontraron datos para el empleado.', 'error');
             }
         }
     });

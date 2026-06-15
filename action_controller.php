@@ -196,29 +196,181 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             break;
 
         case 'listar_administracion_empleados':
-            $query = "SELECT u.id, u.noEmpleado, u.nombre as nombreCompleto, d.departamento as depto_base, u.correo,
-                        (SELECT COUNT(edoc.id) FROM expediente_documentos edoc WHERE edoc.noEmpleado = u.noEmpleado) as total_docs,
-                        IFNULL((SELECT GROUP_CONCAT(CONCAT(jefes.nombre, ' (', depto_alcance.departamento, ')') SEPARATOR ', ') 
+            $query = "SELECT 
+                        u.id, 
+                        u.noEmpleado, 
+                        u.nombre AS nombreCompleto, 
+                        d.departamento AS depto_base, 
+                        u.correo,
+                        (SELECT COUNT(edoc.id) FROM expediente_documentos edoc WHERE edoc.noEmpleado = u.noEmpleado) AS total_docs,
+                        IFNULL((
+                            SELECT GROUP_CONCAT(CONCAT(jefes.nombre, ' (', depto_alcance.departamento, ')') SEPARATOR ', ') 
                             FROM expediente_jefes_tecnicos ejt
                             INNER JOIN usuarios jefes ON ejt.id_usuario_jefe_tecnico = jefes.id
                             INNER JOIN departamento depto_alcance ON ejt.id_departamento = depto_alcance.id
-                        WHERE ejt.id_usuario_empleado = u.noEmpleado), 'N/A') as jefes_tecnicos,
-                        IFNULL((SELECT GROUP_CONCAT(jefes.noEmpleado SEPARATOR ',') 
+                            WHERE ejt.id_usuario_empleado = u.noEmpleado
+                        ), 'N/A') AS jefes_tecnicos,
+                        IFNULL((
+                            SELECT GROUP_CONCAT(jefes.noEmpleado SEPARATOR ',') 
                             FROM expediente_jefes_tecnicos ejt
                             INNER JOIN usuarios jefes ON ejt.id_usuario_jefe_tecnico = jefes.id
                             INNER JOIN departamento depto_alcance ON ejt.id_departamento = depto_alcance.id
-                        WHERE ejt.id_usuario_empleado = u.noEmpleado), 'N/A') as id_jefes_tecnicos,
+                            WHERE ejt.id_usuario_empleado = u.noEmpleado
+                        ), 'N/A') AS id_jefes_tecnicos,
                         p.puesto,
-                        ja.nombre as jefe_administrativo, ja.noEmpleado as id_jefe_directo, u.estatus, u.foto as url_foto,  
-                        IFNULL((SELECT GROUP_CONCAT(CONCAT(t.telefono, ' Ext. ', IFNULL(t.extension, 'N/A')) SEPARATOR ', ') FROM telefono t WHERE t.noEmpleado = u.noEmpleado), 'N/A') AS telefonos
+                        ja.nombre AS jefe_administrativo, 
+                        ja.noEmpleado AS id_jefe_directo, 
+                        u.estatus, 
+                        u.foto AS url_foto,  
+                        IFNULL((
+                            SELECT GROUP_CONCAT(CONCAT(t.telefono, ' Ext. ', IFNULL(t.extension, 'N/A')) SEPARATOR ', ') 
+                            FROM telefono t 
+                            WHERE t.noEmpleado = u.noEmpleado
+                        ), 'N/A') AS telefonos,
+                        
+                        -- ==========================================================
+                        -- CAMPOS DE VACACIONES OPTIMIZADOS Y CORREGIDOS
+                        -- ==========================================================
+                        vac.antiguedad,
+                        vac.fechaIngreso,
+                        vac.dias_ley_actual,
+                        vac.diasSol,
+                        vac.diasdisponibles
+
                     FROM usuarios u
                     LEFT JOIN departamento d ON u.departamento = d.id
                     LEFT JOIN puesto p ON u.puesto = p.id
                     LEFT JOIN usuarios ja ON u.jefe = ja.noEmpleado
+
+                    LEFT JOIN (
+                        SELECT 
+                            v_sub.noEmpleado,
+                            v_sub.antiguedad, 
+                            v_sub.fechaIngreso,  
+                            COALESCE(dv_actual.dias, 0) AS dias_ley_actual,  
+                            
+                            -- 1. Guardamos los días del periodo actual en una variable
+                            @actuales := COALESCE(( 
+                                SELECT SUM(s.dias) FROM solicitudes s 
+                                WHERE s.empleado = v_sub.noEmpleado AND s.estatus = 2 AND s.autorizaRH = 2 AND s.tipo = 1 
+                                AND s.fesolicitud BETWEEN v_sub.inicio_actual AND v_sub.fin_actual 
+                            ), 0) AS diasSol,  
+
+                            -- 2. Guardamos los días del periodo anterior en otra variable temporal
+                            @anteriores := COALESCE(( 
+                                SELECT SUM(s.dias) FROM solicitudes s 
+                                WHERE s.empleado = v_sub.noEmpleado AND s.estatus = 2 AND s.autorizaRH = 2 AND s.tipo = 1 
+                                AND s.fesolicitud BETWEEN v_sub.inicio_anterior AND v_sub.fin_anterior 
+                            ), 0) AS dias_anterior,
+
+                            -- 3. Cálculo de disponibles: Ley Actual - Gastados Actuales - Deuda Pasada (si existe)
+                            (
+                                COALESCE(dv_actual.dias, 0) 
+                                - @actuales 
+                                - GREATEST(0, @anteriores - COALESCE(dv_anterior.dias, 0))
+                            ) AS diasdisponibles 
+
+                        FROM ( 
+                            SELECT 
+                                noEmpleado, 
+                                fechaIngreso, 
+                                TIMESTAMPDIFF(YEAR, fechaIngreso, CURDATE()) AS antiguedad,  
+                                -- Período Actual  
+                                CASE WHEN MAKEDATE(YEAR(CURDATE()), DAYOFYEAR(fechaIngreso)) > CURDATE() 
+                                    THEN MAKEDATE(YEAR(CURDATE()) - 1, DAYOFYEAR(fechaIngreso)) 
+                                    ELSE MAKEDATE(YEAR(CURDATE()), DAYOFYEAR(fechaIngreso)) 
+                                END AS inicio_actual, 
+                                CASE WHEN MAKEDATE(YEAR(CURDATE()), DAYOFYEAR(fechaIngreso)) > CURDATE() 
+                                    THEN MAKEDATE(YEAR(CURDATE()), DAYOFYEAR(fechaIngreso)) 
+                                    ELSE MAKEDATE(YEAR(CURDATE()) + 1, DAYOFYEAR(fechaIngreso)) 
+                                END AS fin_actual,  
+                                -- Período Anterior  
+                                CASE WHEN MAKEDATE(YEAR(CURDATE()), DAYOFYEAR(fechaIngreso)) > CURDATE() 
+                                    THEN MAKEDATE(YEAR(CURDATE()) - 2, DAYOFYEAR(fechaIngreso)) 
+                                    ELSE MAKEDATE(YEAR(CURDATE()) - 1, DAYOFYEAR(fechaIngreso)) 
+                                END AS inicio_anterior, 
+                                CASE WHEN MAKEDATE(YEAR(CURDATE()), DAYOFYEAR(fechaIngreso)) > CURDATE() 
+                                    THEN MAKEDATE(YEAR(CURDATE()) - 1, DAYOFYEAR(fechaIngreso)) 
+                                    ELSE MAKEDATE(YEAR(CURDATE()), DAYOFYEAR(fechaIngreso)) 
+                                END AS fin_anterior  
+                            FROM usuarios  
+                        ) v_sub  
+                        LEFT JOIN diasvacaciones dv_actual ON dv_actual.anio = v_sub.antiguedad  
+                        LEFT JOIN diasvacaciones dv_anterior ON dv_anterior.anio = GREATEST(0, v_sub.antiguedad - 1)  
+                    ) vac ON u.noEmpleado = vac.noEmpleado
+
                     ORDER BY u.nombre ASC";
             $result = mysqli_query($conn, $query);
             $data = [];
             while ($row = mysqli_fetch_assoc($result)) { $data[] = $row; }
+            $response = ['status' => 'success', 'data' => $data];
+            break;
+
+        case 'obtener_dias_vacaciones_usuario':
+            $noEmpleado = intval($_POST['noEmpleado']);
+            $query = "SELECT 
+                        v.nombre,                         
+                        v.noEmpleado,
+                        v.antiguedad, 
+                        v.fechaIngreso,  
+                        COALESCE(dv_actual.dias, 0) AS dias_ley_actual,  
+                        
+                        -- 1. Días tomados en el periodo actual
+                        @actuales := COALESCE(( 
+                            SELECT SUM(s.dias) FROM solicitudes s 
+                            WHERE s.empleado = v.noEmpleado AND s.estatus = 2 AND s.autorizaRH = 2 AND s.tipo = 1 
+                            AND s.fesolicitud BETWEEN v.inicio_actual AND v.fin_actual 
+                        ), 0) AS diasSol,  
+
+                        -- 2. Días tomados en el periodo anterior
+                        @anteriores := COALESCE(( 
+                            SELECT SUM(s.dias) FROM solicitudes s 
+                            WHERE s.empleado = v.noEmpleado AND s.estatus = 2 AND s.autorizaRH = 2 AND s.tipo = 1 
+                            AND s.fesolicitud BETWEEN v.inicio_anterior AND v.fin_anterior 
+                        ), 0) AS dias_anterior,
+
+                        -- 3. CÁLCULO DE DÍAS DISPONIBLES (Descontando deudas si pidió de más)
+                        (
+                            COALESCE(dv_actual.dias, 0) -- Días por ley de este año
+                            - @actuales                 -- Menos lo que ya pidió este año
+                            - GREATEST(0, @anteriores - COALESCE(dv_anterior.dias, 0)) -- Menos la deuda del año pasado (si pidió de más)
+                        ) AS diasdisponibles
+
+                    FROM ( 
+                        SELECT 
+                            nombre,
+                            noEmpleado, 
+                            fechaIngreso, 
+                            TIMESTAMPDIFF(YEAR, fechaIngreso, CURDATE()) AS antiguedad,   
+                            
+                            -- Período Actual  
+                            CASE WHEN MAKEDATE(YEAR(CURDATE()), DAYOFYEAR(fechaIngreso)) > CURDATE() 
+                                THEN MAKEDATE(YEAR(CURDATE()) - 1, DAYOFYEAR(fechaIngreso)) 
+                                ELSE MAKEDATE(YEAR(CURDATE()), DAYOFYEAR(fechaIngreso)) 
+                            END AS inicio_actual, 
+                            CASE WHEN MAKEDATE(YEAR(CURDATE()), DAYOFYEAR(fechaIngreso)) > CURDATE() 
+                                THEN MAKEDATE(YEAR(CURDATE()), DAYOFYEAR(fechaIngreso)) 
+                                ELSE MAKEDATE(YEAR(CURDATE()) + 1, DAYOFYEAR(fechaIngreso)) 
+                            END AS fin_actual,  
+                            
+                            -- Período Anterior  
+                            CASE WHEN MAKEDATE(YEAR(CURDATE()), DAYOFYEAR(fechaIngreso)) > CURDATE() 
+                                THEN MAKEDATE(YEAR(CURDATE()) - 2, DAYOFYEAR(fechaIngreso)) 
+                                ELSE MAKEDATE(YEAR(CURDATE()) - 1, DAYOFYEAR(fechaIngreso))
+                            END AS inicio_anterior, 
+                            CASE WHEN MAKEDATE(YEAR(CURDATE()), DAYOFYEAR(fechaIngreso)) > CURDATE() 
+                                THEN MAKEDATE(YEAR(CURDATE()) - 1, DAYOFYEAR(fechaIngreso)) 
+                                ELSE MAKEDATE(YEAR(CURDATE()), DAYOFYEAR(fechaIngreso)) 
+                            END AS fin_anterior 
+                        FROM usuarios  
+                        WHERE noEmpleado = $noEmpleado
+                    ) v
+                    LEFT JOIN diasvacaciones dv_actual ON dv_actual.anio = v.antiguedad
+                    LEFT JOIN diasvacaciones dv_anterior ON dv_anterior.anio = GREATEST(0, v.antiguedad - 1)";
+            
+            $result = mysqli_query($conn, $query);
+            $data = [];
+            while($r = mysqli_fetch_assoc($result)) { $data[] = $r; }
             $response = ['status' => 'success', 'data' => $data];
             break;
 

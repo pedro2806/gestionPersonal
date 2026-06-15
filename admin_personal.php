@@ -54,15 +54,14 @@ require_once 'conn.php';
                             <div class="table-responsive">
                                 <table id="tabla_admin_personal" class="table table-hover align-middle bg-white rounded-3 overflow-hidden shadow-sm small text-secondary" width="100%">
                                     <thead class="table-light text-uppercase text-muted border-bottom" style="font-size: 0.72rem; letter-spacing: 0.03em;">
-                                        <tr>
-                                            <th class="py-1 ps-3 text-start">No. Emp</th>
+                                        <tr>                                            
                                             <th class="py-1">Nombre Completo / Correo</th>
                                             <th class="py-1">Jefe Inmediato</th>
                                             <th class="py-1">Teléfonos</th>
                                             <th class="py-1">Departamento Base</th>
                                             <th class="py-1">Laboratorios Extras</th>
                                             <th class="py-1 text-center">Estatus</th>
-                                            <th class="py-1 text-center">Doctos</th>
+                                            <th class="py-1 text-center">Días Disp</th>
                                             <th class="py-1 text-center pe-3" style="width: 140px;">Acciones</th>
                                         </tr>
                                     </thead>
@@ -78,7 +77,7 @@ require_once 'conn.php';
             </div>
 
             <!-- ============================================================================ -->
-            <!-- 🆕 MODAL NUEVO: FORMULARIO DE ALTA COMPLETO (BASADO EN EL DE MODIFICAR)      -->
+            <!-- 🆕 FORMULARIO DE ALTA COMPLETO (BASADO EN EL DE MODIFICAR)      -->
             <!-- ============================================================================ -->
             <div class="modal fade" id="modal_nuevo_empleado" tabindex="-1" aria-labelledby="modal_nuevo_empleadoLabel" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -171,7 +170,7 @@ require_once 'conn.php';
             </div>
 
             <!-- ============================================================================ -->
-            <!-- 📄 MODAL ORIGINAL INTACTO: FORMULARIO MAESTRO DE EDICIÓN DE USUARIO          -->
+            <!-- 📄 FORMULARIO MAESTRO DE EDICIÓN DE USUARIO          -->
             <!-- ============================================================================ -->
             <div class="modal fade" id="modal_editar_usuario" tabindex="-1" aria-labelledby="modal_editar_usuarioLabel" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -288,7 +287,7 @@ require_once 'conn.php';
             </div>
 
             <!-- ============================================================================ -->
-            <!-- 📄 MODAL ASIGNACIÓN DE JEFES TÉCNICOS / HABILIDADES LABORAT -->
+            <!-- 📄 FORMULARIO DE ASIGNACIÓN DE JEFES TÉCNICOS / HABILIDADES LABORAT -->
             <!-- ============================================================================ -->
             <div class="modal fade" id="modal_gestion_jefes_tecnicos" tabindex="-1" aria-labelledby="modal_gestion_jefes_tecnicosLabel" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -331,7 +330,7 @@ require_once 'conn.php';
             </div>
 
             <!-- ============================================================================ -->
-            <!-- 📄 MODAL ORIGINAL INTACTO: CAMBIAR FOTO FÍSICA DE USUARIO                    -->
+            <!-- 📄 FORMULARIO MAESTRO DE CAMBIO DE FOTO FÍSICA DE USUARIO                    -->
             <!-- ============================================================================ -->
             <div class="modal fade" id="modal_cambiar_foto" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered" style="max-width: 450px;">
@@ -366,6 +365,48 @@ require_once 'conn.php';
                     </div>
                 </div>
             </div>
+
+            <!-- ============================================================================ -->
+             <!-- 📄 MODAL DE CONFIGURACIÓN DE DÍAS DE VACACIONES DISPONIBLES                 -->
+            <!-- ============================================================================ -->
+            <div class="modal fade" id="modal_gestion_dias_vacaciones" tabindex="-1" aria-labelledby="modal_dias_vacacionesLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border border-dark border-2 shadow">
+                        <div class="modal-header bg-primary border-bottom-0 p-3 pb-2">
+                            <h5 class="modal-title fw-bold text-white small text-uppercase" id="modal_dias_vacacionesLabel"><i class="fas fa-suitcase-rolling me-2"></i> Ver Detalle Vacaciones</h5>
+                            <button type="button" class="btn-close btn-close-white small shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>                        
+                        <div class="modal-body p-4">
+                            <div class="border-bottom pb-2 mb-3">
+                                <h5 class="text-primary mb-0 fw-bold" id="modal_dv_nombre">---</h5>
+                                <small class="text-muted">Empleado: #<span id="modal_dv_noEmpleado">---</span> | Ingreso: <span id="modal_dv_fechaIngreso">---</span></small>
+                            </div>
+
+                            <table class="table table-sm table-borderless align-middle mb-0">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-muted py-2">Antigüedad:</td>
+                                        <td class="text-end fw-bold py-2" id="modal_dv_antiguedad">---</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted py-2">Días por Ley (Año Actual):</td>
+                                        <td class="text-end fw-bold py-2" id="modal_dv_dias_ley_actual">---</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted py-2">Días Solicitados:</td>
+                                        <td class="text-end fw-bold text-warning py-2" id="modal_dv_diasSol">---</td>
+                                    </tr>
+                                    <tr class="table-success rounded">
+                                        <td class="text-success fw-bold py-2 ps-2">Días Disponibles:</td>
+                                        <td class="text-end text-success fw-black fs-5 py-2 pe-2" id="modal_dv_diasdisponibles">---</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
 
             <footer class="sticky-footer bg-light mt-auto border-top-0"><div class="container my-auto"><div class="copyright text-center my-auto text-muted small"><span>Copyright &copy; MESS 2026</span></div></div></footer>
         </div>
