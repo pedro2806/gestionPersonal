@@ -260,9 +260,14 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
                                 } else if (c.resultado === 'REPROBADO') {
                                     badge = '<span class="badge bg-danger text-white border-0 px-2 py-1 font-weight-bold">REPROBADO</span>';
                                 }
+                                let cert = '';
+                                if (c.certificado) {
+                                    cert = `<a href="${c.certificado}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:0.75rem;" title="Ver certificado"><i class="fas fa-eye"></i></a>`;
+                                }
                                 filas += `<tr>
                                     <td class="ps-3 py-2 text-dark">${c.nombre_curso}</td>
                                     <td class="text-center py-2">${badge}</td>
+                                    <td class="text-center py-2">${cert}</td>
                                 </tr>`;
                             });
 
@@ -278,6 +283,7 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
                                                 <tr>
                                                     <th class="ps-3 py-2 text-muted" style="font-size:0.72rem;">Competencia</th>
                                                     <th class="text-center py-2 text-muted" style="font-size:0.72rem;">Resultado</th>
+                                                    <th class="text-center py-2 text-muted" style="font-size:0.72rem;">Certificado</th>
                                                 </tr>
                                             </thead>
                                             <tbody>${filas}</tbody>
