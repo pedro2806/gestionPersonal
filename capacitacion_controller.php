@@ -81,8 +81,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt = mysqli_prepare($conn_cap,
                 "SELECT
                     p.post_title AS nombre_curso,
+                    p.ID AS course_id,
+                    u.display_name,
                     MAX(t.name) AS nivel,
-                    ua.activity_status AS estatus
+                    ua.activity_status AS estatus,
+                    MAX(pm_cert.meta_value) AS certificate_id
                 FROM wp_users u
                 INNER JOIN wp_masteriyo_user_activities ua
                     ON ua.user_id = u.ID
@@ -94,10 +97,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     ON tt.term_taxonomy_id = tr.term_taxonomy_id AND tt.taxonomy = 'course_cat'
                 LEFT JOIN wp_terms t
                     ON t.term_id = tt.term_id
+                LEFT JOIN wp_postmeta pm_cert
+                    ON pm_cert.post_id = p.ID AND pm_cert.meta_key = '_certificate_id'
                 WHERE u.user_email = ?
                   AND ua.activity_type = 'course_progress'
                   AND ua.activity_status IN ('completed', 'failed')
-                GROUP BY p.ID, p.post_title, ua.activity_status
+                GROUP BY p.ID, p.post_title, u.display_name, ua.activity_status
                 ORDER BY nivel ASC, p.post_title ASC"
             );
 
@@ -120,9 +125,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if (!isset($niveles[$nivel_nombre])) {
                     $niveles[$nivel_nombre] = [];
                 }
+                $cert_url = '';
+                if (!empty($row['certificate_id']) && $resultado === 'APROBADO') {
+                    $cert_url = 'https://messbook.com.mx/capacitacion/?course_id=' . $row['course_id'] . '&certificate_id=' . $row['certificate_id'] . '&username=' . urlencode($row['display_name']);
+                }
+
                 $niveles[$nivel_nombre][] = [
-                    'nombre_curso' => $row['nombre_curso'],
-                    'resultado'    => $resultado
+                    'nombre_curso'  => $row['nombre_curso'],
+                    'resultado'     => $resultado,
+                    'certificado'   => $cert_url
                 ];
             }
 
