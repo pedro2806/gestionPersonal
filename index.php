@@ -17,6 +17,22 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
     
     <link href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <style>
+        #tabsPrincipal .nav-link {
+            color: #212529;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+        }
+        #tabsPrincipal .nav-link.active {
+            color: #fff;
+            background: #074480;
+            border-color: #074480;
+            border-radius: 0.375rem 0.375rem 0 0;
+        }
+    </style>
 </head>
 
 <body id="page-top" class="bg-light">
@@ -36,14 +52,25 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
                         <?php include 'tarjeta_perfil.php'; ?>
                     </div>
 
-                    <div class="card border-0 bg-transparent mb-0">
-                        <div class="card-body p-0">                            
-                            <div class="d-flex align-items-center justify-content-between mb-0 py-0 border-bottom border-light">
-                                <div>                                    
-                                    <p class="text-muted small mb-0"> <b>Expediente Digital</b> -  Cumplimiento y estatus de requisitos documentales homologados.</p>
-                                </div>
-                            </div>
-                            
+                    <!-- PESTAÑAS PRINCIPALES -->
+                    <ul class="nav nav-tabs border-bottom-0 mt-2" id="tabsPrincipal" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-bold text-uppercase px-4" id="tabExpediente-tab" data-bs-toggle="tab" data-bs-target="#tabExpediente" type="button" role="tab" style="font-size:0.75rem; letter-spacing:0.03em;">
+                                <i class="fas fa-folder-open me-1"></i> Expediente Digital
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold text-uppercase px-4" id="tabCapacitacion-tab" data-bs-toggle="tab" data-bs-target="#tabCapacitacion" type="button" role="tab" style="font-size:0.75rem; letter-spacing:0.03em;">
+                                <i class="fas fa-graduation-cap me-1"></i> Capacitación
+                                <span class="badge bg-light text-muted border ms-1 small" id="badge_total_cursos">0</span>
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="tabsPrincipalContent">
+
+                        <!-- TAB: EXPEDIENTE DIGITAL -->
+                        <div class="tab-pane fade show active" id="tabExpediente" role="tabpanel">
                             <div class="table-responsive">
                                 <table id="tabla_expediente_empleado" class="table table-hover align-middle bg-white rounded-3 overflow-hidden shadow-sm small text-secondary" width="100%">
                                     <thead class="table-secondary text-uppercase text-muted border-bottom" style="font-size: 0.72rem; letter-spacing: 0.03em;">
@@ -57,11 +84,31 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
                                             <th class="py-3 text-center pe-3" style="width: 140px;">Acción</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="tbody_expediente_empleado" class="border-0">
-                                        </tbody>
+                                    <tbody id="tbody_expediente_empleado" class="border-0"></tbody>
                                 </table>
                             </div>
                         </div>
+
+                        <!-- TAB: CAPACITACIÓN -->
+                        <div class="tab-pane fade" id="tabCapacitacion" role="tabpanel">
+                            <div class="pt-3">
+                                <div id="filtro_empleado_cursos_wrapper" class="mb-3" style="display:none;">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <label class="small text-muted font-weight-bold mb-1">Consultar colaborador</label>
+                                            <select id="select_filtro_empleado_cursos" class="form-select form-select-sm shadow-none">
+                                                <option value="">-- Seleccionar Colaborador --</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="contenedor_niveles_cursos" class="row g-3">
+                                    <div class="col-12 text-center text-muted py-3 small">Cargando cursos...</div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
 
                 </div>
@@ -116,6 +163,7 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     
     <script src="app_index.js"></script>
 
@@ -123,9 +171,13 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
         $(document).ready(function() {
             const id_usuario_sesion = $('#usuario_sesion_id').val();
             obtener_perfil_tarjeta_maestra(id_usuario_sesion);
-            cargar_expediente_empleado(id_usuario_sesion);
+            inicializar_filtro_empleados_cursos();
+
+            $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function() {
+                $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust().responsive.recalc();
+            });
         });
-        // Obtener los datos del perfil del usuario para mostrar en la tarjeta de perfil en la vista de empleado
+
         function obtener_perfil_tarjeta_maestra(id_usuario) {
             $.ajax({
                 url: 'action_controller.php',
@@ -133,12 +185,115 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
                 data: { action: 'obtener_datos_perfil_tarjeta', id_usuario: id_usuario },
                 dataType: 'json',
                 success: function(response) {
-                    if (response.status === 'success') { renderizar_tarjeta_perfil_usuario(response.data); }
+                    if (response.status === 'success') {
+                        renderizar_tarjeta_perfil_usuario(response.data);
+                        if (response.data.correo) {
+                            cargar_cursos_por_nivel(response.data.correo);
+                        }
+                    }
                 }
             });
         }
 
-        // Renderizar los datos del perfil del usuario en la tarjeta de perfil en la vista de empleado
+        function inicializar_filtro_empleados_cursos() {
+            $.ajax({
+                url: 'action_controller.php',
+                type: 'POST',
+                data: { action: 'listar_empleados_filtro_cursos' },
+                dataType: 'json',
+                success: function(res) {
+                    if (res.status === 'success' && (res.rol === 'admin' || res.rol === 'jefe')) {
+                        let opciones = '<option value="">-- Seleccionar Colaborador --</option>';
+                        res.empleados.forEach(function(emp) {
+                            opciones += `<option value="${emp.noEmpleado}" data-correo="${emp.correo}">${emp.nombre} (${emp.noEmpleado})</option>`;
+                        });
+                        $('#select_filtro_empleado_cursos').html(opciones);
+                        $('#filtro_empleado_cursos_wrapper').show();
+                        $('#select_filtro_empleado_cursos').select2({
+                            theme: 'bootstrap-5',
+                            placeholder: '-- Seleccionar Colaborador --',
+                            allowClear: true,
+                            width: '100%'
+                        });
+
+                        $('#select_filtro_empleado_cursos').on('change', function() {
+                            let noEmp = $(this).val();
+                            if (noEmp) {
+                                obtener_perfil_tarjeta_maestra(noEmp);
+                            } else {
+                                let id_sesion = $('#usuario_sesion_id').val();
+                                obtener_perfil_tarjeta_maestra(id_sesion);
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        function cargar_cursos_por_nivel(correo) {
+            $.ajax({
+                url: 'capacitacion_controller.php',
+                type: 'POST',
+                data: { action: 'obtener_cursos_por_nivel', correo: correo },
+                dataType: 'json',
+                success: function(res) {
+                    if (res.status === 'success') {
+                        let niveles = res.niveles;
+                        let claves = Object.keys(niveles);
+                        let total = 0;
+
+                        if (claves.length === 0) {
+                            $('#contenedor_niveles_cursos').html('<div class="col-12 text-center text-muted py-3 small">No se encontraron cursos para este colaborador.</div>');
+                            $('#badge_total_cursos').text('0 cursos');
+                            return;
+                        }
+
+                        let html = '';
+                        claves.forEach(function(nivel) {
+                            let cursos = niveles[nivel];
+                            total += cursos.length;
+                            let filas = '';
+                            cursos.forEach(function(c) {
+                                let badge = '';
+                                if (c.resultado === 'APROBADO') {
+                                    badge = '<span class="badge bg-success text-white border-0 px-2 py-1 font-weight-bold">APROBADO</span>';
+                                } else if (c.resultado === 'REPROBADO') {
+                                    badge = '<span class="badge bg-danger text-white border-0 px-2 py-1 font-weight-bold">REPROBADO</span>';
+                                }
+                                filas += `<tr>
+                                    <td class="ps-3 py-2 text-dark">${c.nombre_curso}</td>
+                                    <td class="text-center py-2">${badge}</td>
+                                </tr>`;
+                            });
+
+                            html += `
+                            <div class="col-md-6 col-lg-4">
+                                <div class="card shadow-sm border h-100">
+                                    <div class="card-header bg-white border-bottom py-2">
+                                        <h6 class="mb-0 font-weight-bold text-dark small text-uppercase">${nivel}</h6>
+                                    </div>
+                                    <div class="card-body p-0">
+                                        <table class="table table-sm table-hover mb-0 small">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th class="ps-3 py-2 text-muted" style="font-size:0.72rem;">Competencia</th>
+                                                    <th class="text-center py-2 text-muted" style="font-size:0.72rem;">Resultado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>${filas}</tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>`;
+                        });
+
+                        $('#contenedor_niveles_cursos').html(html);
+                        $('#badge_total_cursos').text(total + ' curso' + (total !== 1 ? 's' : ''));
+                    }
+                }
+            });
+        }
+
         function renderizar_tarjeta_perfil_usuario(d) {
             $('#tarjeta_nombre_completo').text(d.nombreCompleto);
             $('#tarjeta_puesto_subtitulo').text(d.puesto);
