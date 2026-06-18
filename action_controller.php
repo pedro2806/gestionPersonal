@@ -417,7 +417,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         case 'obtener_datos_perfil_tarjeta':
             // AJUSTE: Sanitizado como entero puro
             $id_usuario = intval($_POST['id_usuario']);
-            $query = "SELECT u.id, u.noEmpleado, u.nombre AS nombreCompleto, p.puesto, u.estatus, d.departamento,
+            $query = "SELECT u.id, u.noEmpleado, u.nombre AS nombreCompleto, u.correo, p.puesto, u.estatus, d.departamento,
                         (SELECT j.nombre FROM usuarios j WHERE j.noEmpleado = u.jefe) AS jefe_administrativo,
                         (SELECT GROUP_CONCAT(CONCAT(jt.nombre, ' (', da.departamento, ')') SEPARATOR ', ') 
                             FROM expediente_jefes_tecnicos ejt 
@@ -872,7 +872,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $response = ['status' => 'success', 'ultimo_no_empleado' => $row['max_noEmpleado']];
         break;
 
-                
+        case 'listar_empleados_filtro_cursos':
+            $no_empleado_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmpleadoGP']) : 0;
+
+            $q_admin = "SELECT id FROM accesos_especiales WHERE noEmpleado = $no_empleado_sesion AND sistema = 'gestionPersonal' AND opcion = 'adminCapacitacion' AND estatus = 1 LIMIT 1";
+            $es_admin = mysqli_num_rows(mysqli_query($conn, $q_admin)) > 0;
+
+            $rol = 'empleado';
+            $empleados = [];
+
+            if ($es_admin) {
+                $rol = 'admin';
+                $q = "SELECT noEmpleado, nombre, correo FROM usuarios WHERE estatus = 1 ORDER BY nombre ASC";
+                $res = mysqli_query($conn, $q);
+                while ($r = mysqli_fetch_assoc($res)) { $empleados[] = $r; }
+            } else {
+                $q_puesto = "SELECT p.puesto FROM usuarios u INNER JOIN puesto p ON u.puesto = p.id WHERE u.noEmpleado = $no_empleado_sesion LIMIT 1";
+                $res_puesto = mysqli_query($conn, $q_puesto);
+                $row_puesto = mysqli_fetch_assoc($res_puesto);
+                $puesto = $row_puesto['puesto'] ?? '';
+
+                if (stripos($puesto, 'Jefe') !== false) {
+                    $rol = 'jefe';
+                    $q = "SELECT u.noEmpleado, u.nombre, u.correo FROM usuarios u
+                          WHERE u.estatus = 1 AND (
+                              u.jefe = $no_empleado_sesion
+                              OR u.noEmpleado IN (SELECT id_usuario_empleado FROM expediente_jefes_tecnicos WHERE id_usuario_jefe_tecnico = $no_empleado_sesion)
+                          )
+                          ORDER BY u.nombre ASC";
+                    $res = mysqli_query($conn, $q);
+                    while ($r = mysqli_fetch_assoc($res)) { $empleados[] = $r; }
+                }
+            }
+
+            $response = ['status' => 'success', 'rol' => $rol, 'empleados' => $empleados];
+            break;
+
+
     }
 }
 echo json_encode($response);
