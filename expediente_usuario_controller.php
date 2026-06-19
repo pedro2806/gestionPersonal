@@ -8,8 +8,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// Recuperamos el número de empleado directo de la cookie segura (por defecto 276)
-$noEmpleado = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmpleadoGP']) : 276;
+// Si se envía id_usuario por POST lo usamos, sino caemos a la cookie
+$noEmpleado = isset($_POST['id_usuario']) && intval($_POST['id_usuario']) > 0
+    ? intval($_POST['id_usuario'])
+    : (isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmpleadoGP']) : 276);
 $action = isset($_POST['action']) ? trim($_POST['action']) : '';
 
 switch ($action) {

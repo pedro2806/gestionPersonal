@@ -1,5 +1,5 @@
 // app_index.js - Controlador Front-end del Expediente del Empleado (MESS)
-let tablaExpedienteEmpleado = null;
+var tablaExpedienteEmpleado = null;
 
 $(document).ready(function() {
     inicializarTablaEmpleado();
@@ -13,18 +13,19 @@ $(document).ready(function() {
 /**
  * 1. Inicializa y configura DataTables para el expediente completo
  */
-function inicializarTablaEmpleado() {
+function inicializarTablaEmpleado(idOverride) {
     if (tablaExpedienteEmpleado) {
         tablaExpedienteEmpleado.destroy();
+        $('#tabla_expediente_empleado tbody').empty();
     }
 
-    let idUsuario = $('#usuario_sesion_id').val();
+    let idUsuario = idOverride || $('#usuario_sesion_id').val();
 
     tablaExpedienteEmpleado = $('#tabla_expediente_empleado').DataTable({
         "ajax": {
             "url": "expediente_usuario_controller.php",
             "type": "POST",
-            "data": { 
+            "data": {
                 "action": "listar_expediente_propio",
                 "id_usuario": idUsuario
             },

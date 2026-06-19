@@ -52,6 +52,18 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
                         <?php include 'tarjeta_perfil.php'; ?>
                     </div>
 
+                    <!-- FILTRO GLOBAL DE COLABORADOR -->
+                    <div id="filtro_empleado_cursos_wrapper" class="mb-2 mt-2" style="display:none;">
+                        <div class="row align-items-end">
+                            <div class="col-md-4">
+                                <label class="small text-muted font-weight-bold mb-1">Consultar colaborador</label>
+                                <select id="select_filtro_empleado_cursos" class="form-select form-select-sm shadow-none">
+                                    <option value="">-- Seleccionar Colaborador --</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- PESTAÑAS PRINCIPALES -->
                     <ul class="nav nav-tabs border-bottom-0 mt-2" id="tabsPrincipal" role="tablist">
                         <li class="nav-item" role="presentation">
@@ -63,6 +75,12 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
                             <button class="nav-link fw-bold text-uppercase px-4" id="tabCapacitacion-tab" data-bs-toggle="tab" data-bs-target="#tabCapacitacion" type="button" role="tab" style="font-size:0.75rem; letter-spacing:0.03em;">
                                 <i class="fas fa-graduation-cap me-1"></i> Capacitación
                                 <span class="badge bg-light text-muted border ms-1 small" id="badge_total_cursos">0</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold text-uppercase px-4" id="tabProcedimientos-tab" data-bs-toggle="tab" data-bs-target="#tabProcedimientos" type="button" role="tab" style="font-size:0.75rem; letter-spacing:0.03em;">
+                                <i class="fas fa-clipboard-list me-1"></i> Procedimientos
+                                <span class="badge bg-light text-muted border ms-1 small" id="badge_total_procedimientos">0</span>
                             </button>
                         </li>
                     </ul>
@@ -92,19 +110,38 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
                         <!-- TAB: CAPACITACIÓN -->
                         <div class="tab-pane fade" id="tabCapacitacion" role="tabpanel">
                             <div class="pt-3">
-                                <div id="filtro_empleado_cursos_wrapper" class="mb-3" style="display:none;">
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <label class="small text-muted font-weight-bold mb-1">Consultar colaborador</label>
-                                            <select id="select_filtro_empleado_cursos" class="form-select form-select-sm shadow-none">
-                                                <option value="">-- Seleccionar Colaborador --</option>
-                                            </select>
-                                        </div>
+                                <div class="row mb-3 align-items-end">
+                                    <div class="col-md-3">
+                                        <select id="filtro_resultado_capacitacion" class="form-select form-select-sm shadow-none">
+                                            <option value="">Todos</option>
+                                            <option value="APROBADO">Aprobados</option>
+                                            <option value="REPROBADO">Reprobados</option>
+                                            <option value="PENDIENTE">Pendientes</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-9 text-end">
+                                        <button class="btn btn-sm btn-outline-success me-1" onclick="exportarCapacitacionCSV()" title="Exportar CSV"><i class="fas fa-file-csv me-1"></i>CSV</button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="exportarCapacitacionPDF()" title="Exportar PDF"><i class="fas fa-file-pdf me-1"></i>PDF</button>
                                     </div>
                                 </div>
-
                                 <div id="contenedor_niveles_cursos" class="row g-3">
                                     <div class="col-12 text-center text-muted py-3 small">Cargando cursos...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB: PROCEDIMIENTOS -->
+                        <div class="tab-pane fade" id="tabProcedimientos" role="tabpanel">
+                            <div class="pt-3">
+                                <div class="row mb-3">
+                                    <div class="col-md-3">
+                                        <select id="filtro_lab_procedimientos" class="form-select form-select-sm shadow-none">
+                                            <option value="">Todos los laboratorios</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="contenedor_procedimientos" class="row g-3">
+                                    <div class="col-12 text-center text-muted py-3 small">Cargando procedimientos...</div>
                                 </div>
                             </div>
                         </div>
@@ -164,6 +201,7 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
     <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="js/html2pdf.bundle.min.js"></script>
     
     <script src="app_index.js"></script>
 
@@ -188,8 +226,26 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
                     if (response.status === 'success') {
                         renderizar_tarjeta_perfil_usuario(response.data);
                         if (response.data.correo) {
-                            cargar_cursos_por_nivel(response.data.correo);
+                            cargar_cursos_por_nivel(response.data.correo, response.data.puesto);
+                            cargar_procedimientos(response.data.correo);
                         }
+                    }
+                }
+            });
+        }
+
+        function cargar_pestanas_empleado(id_usuario) {
+            inicializarTablaEmpleado(id_usuario);
+
+            $.ajax({
+                url: 'action_controller.php',
+                type: 'POST',
+                data: { action: 'obtener_datos_perfil_tarjeta', id_usuario: id_usuario },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status === 'success' && response.data.correo) {
+                        cargar_cursos_por_nivel(response.data.correo, response.data.puesto);
+                        cargar_procedimientos(response.data.correo);
                     }
                 }
             });
@@ -217,88 +273,231 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
                         });
 
                         $('#select_filtro_empleado_cursos').on('change', function() {
-                            let noEmp = $(this).val();
-                            if (noEmp) {
-                                obtener_perfil_tarjeta_maestra(noEmp);
-                            } else {
-                                let id_sesion = $('#usuario_sesion_id').val();
-                                obtener_perfil_tarjeta_maestra(id_sesion);
-                            }
+                            let noEmp = $(this).val() || $('#usuario_sesion_id').val();
+                            cargar_pestanas_empleado(noEmp);
                         });
                     }
                 }
             });
         }
 
-        function cargar_cursos_por_nivel(correo) {
+        var dataCapacitacion = null;
+
+        function cargar_cursos_por_nivel(correo, puesto) {
             $.ajax({
                 url: 'capacitacion_controller.php',
                 type: 'POST',
-                data: { action: 'obtener_cursos_por_nivel', correo: correo },
+                data: { action: 'obtener_cursos_por_nivel', correo: correo, puesto: puesto || '' },
                 dataType: 'json',
                 success: function(res) {
                     if (res.status === 'success') {
-                        let niveles = res.niveles;
-                        let claves = Object.keys(niveles);
-                        let total = 0;
-
-                        if (claves.length === 0) {
-                            $('#contenedor_niveles_cursos').html('<div class="col-12 text-center text-muted py-3 small">No se encontraron cursos para este colaborador.</div>');
-                            $('#badge_total_cursos').text('0 cursos');
-                            return;
-                        }
-
-                        let html = '';
-                        claves.forEach(function(nivel) {
-                            let cursos = niveles[nivel];
-                            total += cursos.length;
-                            let filas = '';
-                            cursos.forEach(function(c) {
-                                let badge = '';
-                                if (c.resultado === 'APROBADO') {
-                                    badge = '<span class="badge bg-success text-white border-0 px-2 py-1 font-weight-bold">APROBADO</span>';
-                                } else if (c.resultado === 'REPROBADO') {
-                                    badge = '<span class="badge bg-danger text-white border-0 px-2 py-1 font-weight-bold">REPROBADO</span>';
-                                }
-                                let cert = '';
-                                if (c.certificado) {
-                                    cert = `<a href="${c.certificado}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:0.75rem;" title="Ver certificado"><i class="fas fa-eye"></i></a>`;
-                                }
-                                filas += `<tr>
-                                    <td class="ps-3 py-2 text-dark">${c.nombre_curso}</td>
-                                    <td class="text-center py-2">${badge}</td>
-                                    <td class="text-center py-2">${cert}</td>
-                                </tr>`;
-                            });
-
-                            html += `
-                            <div class="col-md-6 col-lg-4">
-                                <div class="card shadow-sm border h-100">
-                                    <div class="card-header bg-white border-bottom py-2">
-                                        <h6 class="mb-0 font-weight-bold text-dark small text-uppercase">${nivel}</h6>
-                                    </div>
-                                    <div class="card-body p-0">
-                                        <table class="table table-sm table-hover mb-0 small">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th class="ps-3 py-2 text-muted" style="font-size:0.72rem;">Competencia</th>
-                                                    <th class="text-center py-2 text-muted" style="font-size:0.72rem;">Resultado</th>
-                                                    <th class="text-center py-2 text-muted" style="font-size:0.72rem;">Certificado</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>${filas}</tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>`;
-                        });
-
-                        $('#contenedor_niveles_cursos').html(html);
-                        $('#badge_total_cursos').text(total + ' curso' + (total !== 1 ? 's' : ''));
+                        dataCapacitacion = res.niveles;
+                        $('#filtro_resultado_capacitacion').val('');
+                        renderizar_capacitacion('');
                     }
                 }
             });
         }
+
+        function renderizar_capacitacion(filtro) {
+            if (!dataCapacitacion) return;
+            let claves = Object.keys(dataCapacitacion);
+            let total = 0;
+            let html = '';
+
+            claves.forEach(function(nivel) {
+                let cursos = dataCapacitacion[nivel];
+                let cursosFiltrados = cursos.filter(function(c) {
+                    if (!filtro) return true;
+                    if (filtro === 'PENDIENTE') return !c.resultado;
+                    return c.resultado === filtro;
+                });
+                if (cursosFiltrados.length === 0) return;
+                total += cursosFiltrados.length;
+                let filas = '';
+                cursosFiltrados.forEach(function(c) {
+                    let badge = '';
+                    if (c.resultado === 'APROBADO') badge = '<span class="badge bg-success text-white border-0 px-2 py-1 font-weight-bold">APROBADO</span>';
+                    else if (c.resultado === 'REPROBADO') badge = '<span class="badge bg-danger text-white border-0 px-2 py-1 font-weight-bold">REPROBADO</span>';
+                    let cert = '';
+                    if (c.certificado) cert = `<a href="${c.certificado}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:0.75rem;" title="Ver certificado"><i class="fas fa-eye"></i></a>`;
+                    let fechaLabel = '';
+                    if (c.fecha && c.resultado === 'APROBADO') fechaLabel = `<span class="text-success small">${c.fecha}</span>`;
+                    else if (c.fecha && !c.resultado) fechaLabel = `<span class="text-danger small" title="Fecha de cierre">${c.fecha}</span>`;
+                    filas += `<tr>
+                        <td class="ps-3 py-2 text-dark">${c.nombre_curso}</td>
+                        <td class="text-center py-2">${badge}</td>
+                        <td class="text-center py-2">${fechaLabel}</td>
+                        <td class="text-center py-2">${cert}</td>
+                    </tr>`;
+                });
+
+                html += `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card shadow-sm border h-100">
+                        <div class="card-header bg-white border-bottom py-2">
+                            <h6 class="mb-0 font-weight-bold text-dark small text-uppercase">${nivel}</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <table class="table table-sm table-hover mb-0 small">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3 py-2 text-muted" style="font-size:0.72rem;">Competencia</th>
+                                        <th class="text-center py-2 text-muted" style="font-size:0.72rem;">Resultado</th>
+                                        <th class="text-center py-2 text-muted" style="font-size:0.72rem;">Fecha</th>
+                                        <th class="text-center py-2 text-muted" style="font-size:0.72rem;">Certificado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${filas}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`;
+            });
+
+            if (total === 0) html = '<div class="col-12 text-center text-muted py-3 small">No se encontraron cursos con ese filtro.</div>';
+            $('#contenedor_niveles_cursos').html(html);
+            $('#badge_total_cursos').text(total + ' curso' + (total !== 1 ? 's' : ''));
+        }
+
+        $(document).on('change', '#filtro_resultado_capacitacion', function() {
+            renderizar_capacitacion($(this).val());
+        });
+
+        function getEmpleadoNombreExport() {
+            let sel = $('#select_filtro_empleado_cursos');
+            if (sel.length && sel.val()) return sel.find('option:selected').text().trim();
+            return $('#tarjeta_nombre_completo').text().trim() || 'empleado';
+        }
+
+        function exportarCapacitacionCSV() {
+            if (!dataCapacitacion) return;
+            let filtro = $('#filtro_resultado_capacitacion').val();
+            let rows = [['Nivel', 'Competencia', 'Resultado', 'Fecha']];
+            Object.keys(dataCapacitacion).forEach(function(nivel) {
+                dataCapacitacion[nivel].forEach(function(c) {
+                    let res = c.resultado || 'PENDIENTE';
+                    if (filtro && ((filtro === 'PENDIENTE' && c.resultado) || (filtro !== 'PENDIENTE' && c.resultado !== filtro))) return;
+                    rows.push([nivel, c.nombre_curso, res, c.fecha || '']);
+                });
+            });
+            let csv = rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
+            let blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+            let link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'Capacitacion_' + getEmpleadoNombreExport().replace(/[^a-zA-Z0-9]/g, '_') + '.csv';
+            link.click();
+        }
+
+        function exportarCapacitacionPDF() {
+            let el = document.getElementById('contenedor_niveles_cursos');
+            if (!el) return;
+            let nombre = getEmpleadoNombreExport();
+            let opt = {
+                margin: [10, 10, 10, 10],
+                filename: 'Capacitacion_' + nombre.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            };
+            html2pdf().set(opt).from(el).save();
+        }
+
+        var dataProcedimientos = null;
+
+        function cargar_procedimientos(correo) {
+            $.ajax({
+                url: 'capacitacion_controller.php',
+                type: 'POST',
+                data: { action: 'obtener_procedimientos_empleado', correo: correo },
+                dataType: 'json',
+                success: function(res) {
+                    if (res.status === 'success') {
+                        dataProcedimientos = res.laboratorios;
+                        // Popular filtro de labs
+                        let optsLab = '<option value="">Todos los laboratorios</option>';
+                        Object.keys(dataProcedimientos).forEach(function(lab) {
+                            optsLab += `<option value="${lab}">${lab} (${dataProcedimientos[lab].length})</option>`;
+                        });
+                        $('#filtro_lab_procedimientos').html(optsLab);
+                        renderizar_procedimientos('');
+                    }
+                }
+            });
+        }
+
+        function renderizar_procedimientos(filtroLab) {
+            if (!dataProcedimientos) return;
+            let claves = Object.keys(dataProcedimientos);
+            if (filtroLab) claves = claves.filter(l => l === filtroLab);
+            let total = 0;
+
+            if (claves.length === 0) {
+                $('#contenedor_procedimientos').html('<div class="col-12 text-center text-muted py-3 small">No se encontraron procedimientos.</div>');
+                $('#badge_total_procedimientos').text('0');
+                return;
+            }
+
+            let html = '';
+            claves.forEach(function(lab, idx) {
+                let procs = dataProcedimientos[lab];
+                total += procs.length;
+                let showClass = filtroLab ? '' : 'd-none';
+                let filas = '';
+                procs.forEach(function(p) {
+                    let badge = '';
+                    if (p.resultado === 'APROBADO') {
+                        badge = '<span class="badge bg-success text-white border-0 px-2 py-1 font-weight-bold">APROBADO</span>';
+                    } else if (p.resultado === 'REPROBADO') {
+                        badge = '<span class="badge bg-danger text-white border-0 px-2 py-1 font-weight-bold">REPROBADO</span>';
+                    }
+                    filas += `<tr>
+                        <td class="ps-3 py-2 text-muted" style="font-size:0.72rem;">${p.codigo}</td>
+                        <td class="py-2 text-dark">${p.descripcion}</td>
+                        <td class="text-center py-2">${badge}</td>
+                    </tr>`;
+                });
+
+                let colId = 'collapseLab_' + idx;
+                html += `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card shadow-sm border">
+                        <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center" style="cursor:pointer;" onclick="toggleLab(this)">
+                            <h6 class="mb-0 font-weight-bold text-dark small text-uppercase"><i class="fas fa-chevron-right me-1 small icon-toggle"></i>${lab}</h6>
+                            <span class="badge bg-light text-muted border small">${procs.length}</span>
+                        </div>
+                        <div class="lab-body ${showClass}">
+                            <div style="max-height:350px; overflow-y:auto;">
+                                <table class="table table-sm table-hover mb-0 small">
+                                    <thead class="table-light" style="position:sticky; top:0; z-index:1;">
+                                        <tr>
+                                            <th class="ps-3 py-2 text-muted" style="font-size:0.72rem;">Código</th>
+                                            <th class="py-2 text-muted" style="font-size:0.72rem;">Procedimiento</th>
+                                            <th class="text-center py-2 text-muted" style="font-size:0.72rem;">Resultado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>${filas}</tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+
+            $('#contenedor_procedimientos').html(html);
+            $('#badge_total_procedimientos').text(total);
+        }
+
+        function toggleLab(el) {
+            let body = $(el).next('.lab-body');
+            let icon = $(el).find('.icon-toggle');
+            body.toggleClass('d-none');
+            icon.toggleClass('fa-chevron-right fa-chevron-down');
+        }
+
+        $(document).on('change', '#filtro_lab_procedimientos', function() {
+            renderizar_procedimientos($(this).val());
+        });
 
         function renderizar_tarjeta_perfil_usuario(d) {
             $('#tarjeta_nombre_completo').text(d.nombreCompleto);

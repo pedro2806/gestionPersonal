@@ -78,67 +78,137 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 break;
             }
 
+            $puesto = isset($_POST['puesto']) ? trim($_POST['puesto']) : '';
+            $col_rol = '';
+            $puesto_lower = mb_strtolower($puesto);
+            if (strpos($puesto_lower, 'ingeniero') !== false || strpos($puesto_lower, 'metrólogo') !== false || strpos($puesto_lower, 'signatario') !== false) {
+                $col_rol = '`Ingeniero de Servicio`';
+            } elseif (strpos($puesto_lower, 'jefe') !== false && strpos($puesto_lower, 'laboratorio') !== false) {
+                $col_rol = '`Jefe de Laboratorio`';
+            } elseif (strpos($puesto_lower, 'aftermarket') !== false) {
+                $col_rol = '`Aftermarket`';
+            } elseif (strpos($puesto_lower, 'comercial') !== false || strpos($puesto_lower, 'ventas') !== false) {
+                $col_rol = '`Comercial`';
+            } elseif (strpos($puesto_lower, 'admin') !== false || strpos($puesto_lower, 'contab') !== false || strpos($puesto_lower, 'recursos') !== false) {
+                $col_rol = '`Administracion`';
+            }
+
+            $where_rol = $col_rol !== '' ? "WHERE $col_rol = 1" : '';
+            $res_mc = mysqli_query($conn_cap, "SELECT id_registro, Competencia, Nivel FROM matriz_competencias $where_rol ORDER BY id_registro ASC");
+            $competencias = [];
+            while ($mc = mysqli_fetch_assoc($res_mc)) { $competencias[] = $mc; }
+
             $stmt = mysqli_prepare($conn_cap,
                 "SELECT
                     p.post_title AS nombre_curso,
                     p.ID AS course_id,
                     u.display_name,
-                    MAX(t.name) AS nivel,
                     ua.activity_status AS estatus,
-                    MAX(pm_cert.meta_value) AS certificate_id
+                    ua.completed_at,
+                    MAX(pm_cert.meta_value) AS certificate_id,
+                    MAX(pm_end.meta_value) AS end_date_raw
                 FROM wp_users u
-                INNER JOIN wp_masteriyo_user_activities ua
-                    ON ua.user_id = u.ID
-                INNER JOIN wp_posts p
-                    ON p.ID = ua.item_id
-                LEFT JOIN wp_term_relationships tr
-                    ON tr.object_id = p.ID
-                LEFT JOIN wp_term_taxonomy tt
-                    ON tt.term_taxonomy_id = tr.term_taxonomy_id AND tt.taxonomy = 'course_cat'
-                LEFT JOIN wp_terms t
-                    ON t.term_id = tt.term_id
-                LEFT JOIN wp_postmeta pm_cert
-                    ON pm_cert.post_id = p.ID AND pm_cert.meta_key = '_certificate_id'
+                INNER JOIN wp_masteriyo_user_activities ua ON ua.user_id = u.ID
+                INNER JOIN wp_posts p ON p.ID = ua.item_id
+                LEFT JOIN wp_postmeta pm_cert ON pm_cert.post_id = p.ID AND pm_cert.meta_key = '_certificate_id'
+                LEFT JOIN wp_postmeta pm_end ON pm_end.post_id = p.ID AND pm_end.meta_key = '_end_date'
                 WHERE u.user_email = ?
                   AND ua.activity_type = 'course_progress'
                   AND ua.activity_status IN ('completed', 'failed')
-                GROUP BY p.ID, p.post_title, u.display_name, ua.activity_status
-                ORDER BY nivel ASC, p.post_title ASC"
+                GROUP BY p.ID, p.post_title, u.display_name, ua.activity_status, ua.completed_at"
             );
 
-            if (!$stmt) {
-                $response = ['status' => 'error', 'message' => 'Error en la preparación de la consulta.'];
-                break;
+            $cursos_usuario = [];
+            if ($stmt) {
+                mysqli_stmt_bind_param($stmt, 's', $correo);
+                mysqli_stmt_execute($stmt);
+                $result = mysqli_stmt_get_result($stmt);
+                while ($row = mysqli_fetch_assoc($result)) {
+                    $cursos_usuario[mb_strtolower(trim($row['nombre_curso']))] = $row;
+                }
+                mysqli_stmt_close($stmt);
             }
 
-            mysqli_stmt_bind_param($stmt, 's', $correo);
-            mysqli_stmt_execute($stmt);
-            $result = mysqli_stmt_get_result($stmt);
+            // Obtener fechas de cierre para cursos sin actividad del usuario
+            $fechas_cierre = [];
+            $res_end = mysqli_query($conn_cap, "SELECT p.post_title, pm.meta_value FROM wp_posts p INNER JOIN wp_postmeta pm ON pm.post_id = p.ID AND pm.meta_key = '_end_date' WHERE p.post_type = 'mto-course'");
+            while ($row = mysqli_fetch_assoc($res_end)) {
+                $fecha = '';
+                if (preg_match('/\"(\d{4}-\d{2}-\d{2})/', $row['meta_value'], $m)) {
+                    $fecha = $m[1];
+                }
+                if ($fecha) $fechas_cierre[mb_strtolower(trim($row['post_title']))] = $fecha;
+            }
 
             $niveles = [];
-            while ($row = mysqli_fetch_assoc($result)) {
-                $nivel_nombre = $row['nivel'] ?? 'Sin categoría';
+            $display_name = '';
+            foreach ($competencias as $comp) {
+                $nivel = $comp['Nivel'];
+                if (!isset($niveles[$nivel])) $niveles[$nivel] = [];
+
+                $key = mb_strtolower(trim($comp['Competencia']));
                 $resultado = '';
-                if ($row['estatus'] === 'completed') $resultado = 'APROBADO';
-                if ($row['estatus'] === 'failed') $resultado = 'REPROBADO';
-
-                if (!isset($niveles[$nivel_nombre])) {
-                    $niveles[$nivel_nombre] = [];
-                }
                 $cert_url = '';
-                if (!empty($row['certificate_id']) && $resultado === 'APROBADO') {
-                    $cert_url = 'https://messbook.com.mx/capacitacion/?course_id=' . $row['course_id'] . '&certificate_id=' . $row['certificate_id'] . '&username=' . urlencode($row['display_name']);
+
+                $fecha = '';
+                if (isset($cursos_usuario[$key])) {
+                    $cu = $cursos_usuario[$key];
+                    if ($cu['estatus'] === 'completed') $resultado = 'APROBADO';
+                    if ($cu['estatus'] === 'failed') $resultado = 'REPROBADO';
+                    if ($display_name === '' && !empty($cu['display_name'])) $display_name = $cu['display_name'];
+
+                    if ($resultado === 'APROBADO' && !empty($cu['completed_at'])) {
+                        $fecha = date('d/m/Y', strtotime($cu['completed_at']));
+                    }
+
+                    if (!empty($cu['certificate_id']) && $resultado === 'APROBADO') {
+                        $cert_url = 'https://messbook.com.mx/capacitacion/?course_id=' . $cu['course_id'] . '&certificate_id=' . $cu['certificate_id'] . '&username=' . urlencode($cu['display_name']);
+                    }
+                } else {
+                    if (isset($fechas_cierre[$key])) {
+                        $fecha = date('d/m/Y', strtotime($fechas_cierre[$key]));
+                    }
                 }
 
-                $niveles[$nivel_nombre][] = [
-                    'nombre_curso'  => $row['nombre_curso'],
-                    'resultado'     => $resultado,
-                    'certificado'   => $cert_url
+                $niveles[$nivel][] = [
+                    'nombre_curso' => $comp['Competencia'],
+                    'resultado'    => $resultado,
+                    'certificado'  => $cert_url,
+                    'fecha'        => $fecha
                 ];
             }
 
-            mysqli_stmt_close($stmt);
             $response = ['status' => 'success', 'niveles' => $niveles];
+            break;
+
+        case 'obtener_procedimientos_empleado':
+            $correo = isset($_POST['correo']) ? trim($_POST['correo']) : '';
+
+            $result = mysqli_query($conn_cap, "SELECT codigo_metodo, descripcion FROM matriz_procedimientos ORDER BY codigo_metodo ASC");
+
+            $lab_nombres = [
+                'HU' => 'Humedad', 'TE' => 'Temperatura', 'PR' => 'Presión',
+                'EL' => 'Eléctrica', 'DU' => 'Dureza', 'MA' => 'Masa',
+                'PT' => 'Par Torsional', 'FZ' => 'Fuerza', 'DI' => 'Dimensional'
+            ];
+
+            $laboratorios = [];
+            while ($row = mysqli_fetch_assoc($result)) {
+                $partes = explode('-', $row['codigo_metodo']);
+                $lab_code = $partes[1] ?? '??';
+                $lab_label = isset($lab_nombres[$lab_code]) ? $lab_nombres[$lab_code] . ' (' . $lab_code . ')' : $lab_code;
+
+                if (!isset($laboratorios[$lab_label])) {
+                    $laboratorios[$lab_label] = [];
+                }
+                $laboratorios[$lab_label][] = [
+                    'codigo'      => $row['codigo_metodo'],
+                    'descripcion' => $row['descripcion'],
+                    'resultado'   => ''
+                ];
+            }
+
+            $response = ['status' => 'success', 'laboratorios' => $laboratorios];
             break;
     }
 }
