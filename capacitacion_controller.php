@@ -80,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             $puesto = isset($_POST['puesto']) ? trim($_POST['puesto']) : '';
             $col_rol = '';
-            $puesto_lower = mb_strtolower($puesto);
+            $puesto_lower = strtolower($puesto);
             if (strpos($puesto_lower, 'ingeniero') !== false || strpos($puesto_lower, 'metrólogo') !== false || strpos($puesto_lower, 'signatario') !== false) {
                 $col_rol = '`Ingeniero de Servicio`';
             } elseif (strpos($puesto_lower, 'jefe') !== false && strpos($puesto_lower, 'laboratorio') !== false) {
@@ -124,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 mysqli_stmt_execute($stmt);
                 $result = mysqli_stmt_get_result($stmt);
                 while ($row = mysqli_fetch_assoc($result)) {
-                    $cursos_usuario[mb_strtolower(trim($row['nombre_curso']))] = $row;
+                    $cursos_usuario[strtolower(trim($row['nombre_curso']))] = $row;
                 }
                 mysqli_stmt_close($stmt);
             }
@@ -137,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if (preg_match('/\"(\d{4}-\d{2}-\d{2})/', $row['meta_value'], $m)) {
                     $fecha = $m[1];
                 }
-                if ($fecha) $fechas_cierre[mb_strtolower(trim($row['post_title']))] = $fecha;
+                if ($fecha) $fechas_cierre[strtolower(trim($row['post_title']))] = $fecha;
             }
 
             $niveles = [];
@@ -146,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $nivel = $comp['Nivel'];
                 if (!isset($niveles[$nivel])) $niveles[$nivel] = [];
 
-                $key = mb_strtolower(trim($comp['Competencia']));
+                $key = strtolower(trim($comp['Competencia']));
                 $resultado = '';
                 $cert_url = '';
 
