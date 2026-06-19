@@ -24,49 +24,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 break;
             }
 
-            $stmt = mysqli_prepare($conn_cap,
-                "SELECT
+            $correo_esc = mysqli_real_escape_string($conn_cap, $correo);
+            $q = "SELECT
                     p.post_title AS nombre_curso,
                     MAX(t.name) AS area_departamento,
                     ua.activity_status AS estatus,
                     ua.completed_at
                 FROM wp_users u
-                INNER JOIN wp_masteriyo_user_activities ua
-                    ON ua.user_id = u.ID
-                INNER JOIN wp_posts p
-                    ON p.ID = ua.item_id
-                LEFT JOIN wp_term_relationships tr
-                    ON tr.object_id = p.ID
-                LEFT JOIN wp_term_taxonomy tt
-                    ON tt.term_taxonomy_id = tr.term_taxonomy_id AND tt.taxonomy = 'course_cat'
-                LEFT JOIN wp_terms t
-                    ON t.term_id = tt.term_id
-                WHERE u.user_email = ?
+                INNER JOIN wp_masteriyo_user_activities ua ON ua.user_id = u.ID
+                INNER JOIN wp_posts p ON p.ID = ua.item_id
+                LEFT JOIN wp_term_relationships tr ON tr.object_id = p.ID
+                LEFT JOIN wp_term_taxonomy tt ON tt.term_taxonomy_id = tr.term_taxonomy_id AND tt.taxonomy = 'course_cat'
+                LEFT JOIN wp_terms t ON t.term_id = tt.term_id
+                WHERE u.user_email = '$correo_esc'
                   AND ua.activity_type = 'course_progress'
                   AND ua.activity_status = 'completed'
                 GROUP BY p.ID, p.post_title, ua.activity_status, ua.completed_at
-                ORDER BY ua.completed_at DESC"
-            );
-
-            if (!$stmt) {
-                $response = ['status' => 'error', 'message' => 'Error en la preparación de la consulta.'];
-                break;
-            }
-
-            mysqli_stmt_bind_param($stmt, 's', $correo);
-            mysqli_stmt_execute($stmt);
-            $result = mysqli_stmt_get_result($stmt);
+                ORDER BY ua.completed_at DESC";
+            $result = mysqli_query($conn_cap, $q);
 
             $data = [];
-            while ($row = mysqli_fetch_assoc($result)) {
-                $data[] = [
-                    'nombre_curso'      => $row['nombre_curso'],
-                    'area_departamento' => $row['area_departamento'] ?? 'Sin categoría',
-                    'estatus'           => $row['estatus']
-                ];
+            if ($result) {
+                while ($row = mysqli_fetch_assoc($result)) {
+                    $data[] = [
+                        'nombre_curso'      => $row['nombre_curso'],
+                        'area_departamento' => $row['area_departamento'] ?? 'Sin categoría',
+                        'estatus'           => $row['estatus']
+                    ];
+                }
             }
-
-            mysqli_stmt_close($stmt);
             $response = ['status' => 'success', 'data' => $data];
             break;
 
@@ -103,35 +89,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 break;
             }
 
-            $stmt = mysqli_prepare($conn_cap,
-                "SELECT
+            $correo_esc = mysqli_real_escape_string($conn_cap, $correo);
+            $q_cursos = "SELECT
                     p.post_title AS nombre_curso,
                     p.ID AS course_id,
                     u.display_name,
                     ua.activity_status AS estatus,
                     ua.completed_at,
-                    MAX(pm_cert.meta_value) AS certificate_id,
-                    MAX(pm_end.meta_value) AS end_date_raw
+                    MAX(pm_cert.meta_value) AS certificate_id
                 FROM wp_users u
                 INNER JOIN wp_masteriyo_user_activities ua ON ua.user_id = u.ID
                 INNER JOIN wp_posts p ON p.ID = ua.item_id
                 LEFT JOIN wp_postmeta pm_cert ON pm_cert.post_id = p.ID AND pm_cert.meta_key = '_certificate_id'
-                LEFT JOIN wp_postmeta pm_end ON pm_end.post_id = p.ID AND pm_end.meta_key = '_end_date'
-                WHERE u.user_email = ?
+                WHERE u.user_email = '$correo_esc'
                   AND ua.activity_type = 'course_progress'
                   AND ua.activity_status IN ('completed', 'failed')
-                GROUP BY p.ID, p.post_title, u.display_name, ua.activity_status, ua.completed_at"
-            );
+                GROUP BY p.ID, p.post_title, u.display_name, ua.activity_status, ua.completed_at";
+            $res_cursos = mysqli_query($conn_cap, $q_cursos);
 
             $cursos_usuario = [];
-            if ($stmt) {
-                mysqli_stmt_bind_param($stmt, 's', $correo);
-                mysqli_stmt_execute($stmt);
-                $result = mysqli_stmt_get_result($stmt);
-                while ($row = mysqli_fetch_assoc($result)) {
+            if ($res_cursos) {
+                while ($row = mysqli_fetch_assoc($res_cursos)) {
                     $cursos_usuario[strtolower(trim($row['nombre_curso']))] = $row;
                 }
-                mysqli_stmt_close($stmt);
             }
 
             // Obtener fechas de cierre para cursos sin actividad del usuario
