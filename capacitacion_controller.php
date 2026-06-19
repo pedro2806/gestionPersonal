@@ -1,6 +1,4 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 // capacitacion_controller.php - Consulta de cursos aprobados en el sistema de capacitación Masteriyo (MESS)
 header('Content-Type: application/json; charset=utf-8');
 
@@ -82,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
 
             $where_rol = $col_rol !== '' ? "WHERE $col_rol = 1" : '';
-            $res_mc = mysqli_query($conn_cap, "SELECT id_registro, Competencia, Nivel FROM matriz_competencias $where_rol ORDER BY id_registro ASC");
+            $res_mc = mysqli_query($conn_cap, "SELECT id_registro, Competencia, Nivel FROM Matriz_Competencias $where_rol ORDER BY id_registro ASC");
             $competencias = [];
             if ($res_mc) {
                 while ($mc = mysqli_fetch_assoc($res_mc)) { $competencias[] = $mc; }
