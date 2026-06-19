@@ -1,4 +1,6 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 // capacitacion_controller.php - Consulta de cursos aprobados en el sistema de capacitación Masteriyo (MESS)
 header('Content-Type: application/json; charset=utf-8');
 
