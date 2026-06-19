@@ -96,7 +96,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $where_rol = $col_rol !== '' ? "WHERE $col_rol = 1" : '';
             $res_mc = mysqli_query($conn_cap, "SELECT id_registro, Competencia, Nivel FROM matriz_competencias $where_rol ORDER BY id_registro ASC");
             $competencias = [];
-            while ($mc = mysqli_fetch_assoc($res_mc)) { $competencias[] = $mc; }
+            if ($res_mc) {
+                while ($mc = mysqli_fetch_assoc($res_mc)) { $competencias[] = $mc; }
+            } else {
+                $response = ['status' => 'error', 'message' => 'Error matriz_competencias: ' . mysqli_error($conn_cap)];
+                break;
+            }
 
             $stmt = mysqli_prepare($conn_cap,
                 "SELECT
@@ -132,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             // Obtener fechas de cierre para cursos sin actividad del usuario
             $fechas_cierre = [];
             $res_end = mysqli_query($conn_cap, "SELECT p.post_title, pm.meta_value FROM wp_posts p INNER JOIN wp_postmeta pm ON pm.post_id = p.ID AND pm.meta_key = '_end_date' WHERE p.post_type = 'mto-course'");
-            while ($row = mysqli_fetch_assoc($res_end)) {
+            while ($res_end && $row = mysqli_fetch_assoc($res_end)) {
                 $fecha = '';
                 if (preg_match('/\"(\d{4}-\d{2}-\d{2})/', $row['meta_value'], $m)) {
                     $fecha = $m[1];
@@ -185,6 +190,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $correo = isset($_POST['correo']) ? trim($_POST['correo']) : '';
 
             $result = mysqli_query($conn_cap, "SELECT codigo_metodo, descripcion FROM matriz_procedimientos ORDER BY codigo_metodo ASC");
+            if (!$result) {
+                $response = ['status' => 'error', 'message' => 'Error matriz_procedimientos: ' . mysqli_error($conn_cap)];
+                break;
+            }
 
             $lab_nombres = [
                 'HU' => 'Humedad', 'TE' => 'Temperatura', 'PR' => 'Presión',
