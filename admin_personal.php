@@ -91,7 +91,7 @@ require_once 'conn.php';
                                 <div class="row g-3">
                                     <div class="col-md-3">
                                         <label class="small text-muted font-weight-bold mb-1">No. Empleado</label>
-                                        <input type="number" class="form-control shadow-none" name="nuevo_noEmpleado"  id="nuevo_noEmpleado" required placeholder="Ej: 276" readonly>
+                                        <input type="number" class="form-control shadow-none" name="nuevo_noEmpleado"  id="nuevo_noEmpleado" required placeholder="Ej: 276">
                                     </div>
                                     <div class="col-md-9">
                                         <label class="small text-muted font-weight-bold mb-1">Nombre Completo</label>
