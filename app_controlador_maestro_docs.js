@@ -660,11 +660,11 @@ function abrir_modal_nuevo_empleado() {
 }
 
 function guardar_nuevo_empleado_sistema() {
+    // 1. Serializamos los datos del formulario
     let formData = $('#form_registrar_nuevo_empleado').serialize();
     formData += '&action=registrar_nuevo_empleado_sistema';
 
-    email = $('#nuevo_correo').val(); // Capturamos el correo para usarlo después en el envío del correo de bienvenida
-
+    // 2. Primera petición: Guardar empleado en la base de datos
     $.ajax({
         url: 'action_controller.php',
         type: 'POST',
@@ -676,33 +676,39 @@ function guardar_nuevo_empleado_sistema() {
         success: function(res) {
             Swal.close();
             if (res.status === 'success') {
+                
+                // Mostrar éxito y actualizar UI
                 Swal.fire({ icon: 'success', title: '¡Guardado!', text: res.message, timer: 1500, showConfirmButton: false });
                 $('#modal_nuevo_empleado').modal('hide');
                 cargar_tabla_administracion_docs();
-                //enviar correo de bienvenida al nuevo empleado
-                $.ajax({
-                    url: 'correoNuevoUsuario.php',
-                    type: 'POST',
-                    data: { 
-                        action: 'recover_password', 
-                        email: res.correo 
-                    },
-                    dataType: 'json',
-                    success: function(res) {
-                        //alert('Correo de bienvenida enviado al nuevo empleado.');
-                    },
-                    error: function() {
-                        alert('Error al enviar correo de bienvenida.');
-                    }
-                });
+                
+                // 3. Segunda petición (Silenciosa): Enviar correo de bienvenida
+                if (res.correo) {
+                    $.ajax({
+                        url: 'correoNuevoUsuario.php',
+                        type: 'POST',
+                        data: { 
+                            action: 'recover_password', 
+                            email: res.correo 
+                        },
+                        dataType: 'json',
+                        success: function(resEmail) {
+                            console.log('Correo de bienvenida enviado exitosamente a: ' + res.correo);
+                        },
+                        error: function(xhr, status, error) {
+                            console.error('El empleado se guardó, pero falló el envío del correo: ', error);
+                        }
+                    });
+                }
 
             } else {
                 Swal.fire('Atención', res.message, 'warning');
             }
         },
-        error: function() {
+        error: function(xhr, status, error) {
             Swal.close();
-            Swal.fire('Fallo de Conexión', 'No se detectó el caso en action_controller.php, verifica tu backend.', 'error');
+            console.error(xhr.responseText); // Útil para depurar si PHP arroja un Fatal Error
+            Swal.fire('Fallo de Conexión', 'No se pudo comunicar con el servidor para registrar al empleado.', 'error');
         }
     });
 }
