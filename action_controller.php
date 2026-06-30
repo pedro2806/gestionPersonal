@@ -757,7 +757,7 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
         // ============================================================================
         // 🆕 CASO ADICIONAL: ALTA COMPLETA DE COLABORADORES EN EL EXPEDIENTE
         // ============================================================================
-        case 'registrar_nuevo_empleado_sistema':
+case 'registrar_nuevo_empleado_sistema':
             // Asegurar limpieza absoluta de datos obligatorios y numéricos
             $noEmpleado    = intval($_POST['nuevo_noEmpleado']);
             $nombre        = mysqli_real_escape_string($conn, $_POST['nuevo_nombre']);
@@ -768,14 +768,12 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
             $puesto        = intval($_POST['nuevo_puesto']);
             $jefe          = intval($_POST['nuevo_jefe']);
             
-            // Campos opcionales o formateados en mayúsculas estrictas
             $curp          = strtoupper(mysqli_real_escape_string($conn, trim($_POST['nuevo_curp'])));
             $rfc           = strtoupper(mysqli_real_escape_string($conn, trim($_POST['nuevo_rfc'])));
             $nss           = mysqli_real_escape_string($conn, trim($_POST['nuevo_nss']));
             $tipoContrato  = mysqli_real_escape_string($conn, $_POST['nuevo_tipoContrato']);
-            $tipoSangre = mysqli_real_escape_string($conn, $_POST['nuevo_tipoSangre'] ?? '');
+            $tipoSangre    = mysqli_real_escape_string($conn, $_POST['nuevo_tipoSangre'] ?? '');
             
-            // Valor por defecto para la foto de perfil inicial institucional
             $foto_default  = "fotos_perfil/undraw_profile.svg";
 
             if ($noEmpleado === 0 || empty($nombre) || empty($correo)) {
@@ -783,15 +781,15 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
                 break;
             }
 
-            // Validación preventiva de duplicidad de número de nómina corporativa
+            // Validación de duplicidad
             $check_duplicado = mysqli_query($conn, "SELECT noEmpleado FROM usuarios WHERE noEmpleado = $noEmpleado LIMIT 1");
             if (mysqli_num_rows($check_duplicado) > 0) {
-                $response = ['status' => 'error', 'message' => "El número de empleado $noEmpleado ya se encuentra asignado a un colaborador activo."];
+                $response = ['status' => 'error', 'message' => "El número de empleado $noEmpleado ya se encuentra asignado."];
                 break;
             }
 
-            $usuario = $correo; // Asumimos que el correo es el usuario de inicio de sesión
-            // Generar contraseña MD5 a partir del usuario (sin el dominio @mess.com.mx)
+            $usuario = $correo;
+            
             $user_part = '';
             if (stripos($correo, '@mess.com.mx') !== false) {
                 $user_part = str_ireplace('@mess.com.mx', '', $correo);
@@ -800,7 +798,7 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
             }
             $password = md5($user_part);
                 
-            // Query de inserción masiva clonando la estructura de tu tabla usuarios
+            // Inserción de usuario
             $q_insert = "INSERT INTO usuarios 
                             (noEmpleado, nombre, correo, sexo, fechaIngreso, departamento, puesto, jefe, curp, rfc, nss, tipoContrato, tipoSangre, foto, estatus, usuario, password, password_restaurar) 
                         VALUES 
@@ -808,32 +806,31 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
 
             if (mysqli_query($conn, $q_insert)) {
     
-                // Si la inserción del nuevo empleado fue exitosa, procedemos a crear sus accesos a los sistemas
-                $q_insert_accesos = "INSERT INTO `accesos` (`id`, `noEmpleado`, `sistema`, `estatus`) VALUES 
-                                    (NULL, $noEmpleado, 'divIncidencias', '1'), 
-                                    (NULL, $noEmpleado, 'divControlVehicular', '1'), 
-                                    (NULL, $noEmpleado, 'divCapacitacion', '1'),
-                                    (NULL, $noEmpleado, 'divVacaciones', '1');";
+                // Corrección: Se quitó el campo `id` (asumiendo autoincrement) y el punto y coma final
+                $q_insert_accesos = "INSERT INTO accesos (noEmpleado, sistema, estatus) VALUES 
+                                    ($noEmpleado, 'divIncidencias', '1'), 
+                                    ($noEmpleado, 'divControlVehicular', '1'), 
+                                    ($noEmpleado, 'divCapacitacion', '1'),
+                                    ($noEmpleado, 'divVacaciones', '1')";
                 
-                // Validamos que la inserción de accesos también sea exitosa
                 if (mysqli_query($conn, $q_insert_accesos)) {
                     $response = [
                         'status' => 'success', 
                         'title' => '¡Excelente!',
-                        'message' => '¡Colaborador creado con éxito! Se ha habilitado su perfil en la matriz de expediente general.',
+                        'message' => '¡Colaborador creado con éxito!',
                         'correo' => $correo
-                        ];  
+                    ];  
                 } else {
-                    // Falló la inserción de accesos (puedes hacer un log de mysqli_error($conn) aquí si quieres)
                     $response = [
                         'status' => 'error',
                         'title' => 'Error de accesos',
-                        'message' => 'El colaborador se creó, pero hubo un problema al asignar sus accesos automáticos.'
+                        // Se agrega mysqli_error para saber exactamente qué falló en producción
+                        'message' => 'El colaborador se creó, pero fallaron los accesos: ' . mysqli_error($conn)
                     ];
                 }
 
             } else {
-                $response = ['status' => 'error', 'message' => 'Fallo operativo en la base de datos: ' . mysqli_error($conn)];
+                $response = ['status' => 'error', 'message' => 'Fallo operativo en la BD: ' . mysqli_error($conn)];
             }
             break;
 
