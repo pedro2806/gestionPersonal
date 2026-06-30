@@ -546,7 +546,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             ];
             break;
 
-            case 'obtener_estructura_organigrama':
+        case 'obtener_estructura_organigrama':
             // Aseguramos renglones únicos absolutos mediante DISTINCT y GROUP BY
             $query = "SELECT DISTINCT
                         u.noEmpleado AS id, 
@@ -564,14 +564,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                       WHERE u.estatus = 1 AND u.departamento != 0 AND u.jefe != 0
                       GROUP BY u.noEmpleado
                       ORDER BY u.jefe ASC, u.nombre ASC";
-                      
+
             $result = mysqli_query($conn, $query);
             $datos = [];
-            
+
             while($row = mysqli_fetch_assoc($result)) {
                 $id_limpio = intval($row['id']);
                 $pid_limpio = intval($row['pid']);
-                
+
                 // Si el jefe es 0 o apunta a sí mismo, se vuelve NULL (raíz) para no romper la librería
                 if ($pid_limpio === 0 || $pid_limpio === $id_limpio) {
                     $pid_limpio = null;
@@ -586,174 +586,174 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'alcances_extra' => !empty($row['alcances_extra']) ? $row['alcances_extra'] : ""
                 ];
             }
-            
+
             echo json_encode(['status' => 'success', 'data' => $datos]);
             exit;
             break;
 
-            case 'obtener_telefonos_usuario':
-                $noEmpleado = intval($_POST['noEmpleado']);
-                $query = "SELECT idTelefono AS id, telefono, extension FROM telefono WHERE noEmpleado = $noEmpleado ORDER BY idTelefono ASC";
-                $result = mysqli_query($conn, $query);
-                $telefonos = [];
-                while($row = mysqli_fetch_assoc($result)) { $telefonos[] = $row; }
-                $response = ['status' => 'success', 'data' => $telefonos];
+        case 'obtener_telefonos_usuario':
+            $noEmpleado = intval($_POST['noEmpleado']);
+            $query = "SELECT idTelefono AS id, telefono, extension FROM telefono WHERE noEmpleado = $noEmpleado ORDER BY idTelefono ASC";
+            $result = mysqli_query($conn, $query);
+            $telefonos = [];
+            while($row = mysqli_fetch_assoc($result)) { $telefonos[] = $row; }
+            $response = ['status' => 'success', 'data' => $telefonos];
+            break;
+
+        // Sincroniza la lista completa de teléfonos del empleado:
+        // - UPDATE filas con idTelefono existente
+        // - INSERT filas nuevas (idTelefono vacío o 0)
+        // - DELETE filas del empleado que ya no aparezcan en la lista enviada
+        case 'guardar_telefonos_usuario':
+            $noEmpleado  = intval($_POST['noEmpleado']);
+            $ids         = isset($_POST['id'])        && is_array($_POST['id'])        ? $_POST['id']        : [];
+            $telefonos   = isset($_POST['telefono'])  && is_array($_POST['telefono'])  ? $_POST['telefono']  : [];
+            $extensiones = isset($_POST['extension']) && is_array($_POST['extension']) ? $_POST['extension'] : [];
+
+            if ($noEmpleado <= 0) {
+                $response = ['status' => 'error', 'message' => 'Empleado inválido.'];
                 break;
+            }
 
-            // Sincroniza la lista completa de teléfonos del empleado:
-            // - UPDATE filas con idTelefono existente
-            // - INSERT filas nuevas (idTelefono vacío o 0)
-            // - DELETE filas del empleado que ya no aparezcan en la lista enviada
-            case 'guardar_telefonos_usuario':
-                $noEmpleado  = intval($_POST['noEmpleado']);
-                $ids         = isset($_POST['id'])        && is_array($_POST['id'])        ? $_POST['id']        : [];
-                $telefonos   = isset($_POST['telefono'])  && is_array($_POST['telefono'])  ? $_POST['telefono']  : [];
-                $extensiones = isset($_POST['extension']) && is_array($_POST['extension']) ? $_POST['extension'] : [];
+            $stmtUpd = mysqli_prepare($conn, "UPDATE telefono SET telefono = ?, extension = ? WHERE idTelefono = ? AND noEmpleado = ?");
+            $stmtIns = mysqli_prepare($conn, "INSERT INTO telefono (noEmpleado, telefono, extension, tipo) VALUES (?, ?, ?, 2)");
 
-                if ($noEmpleado <= 0) {
-                    $response = ['status' => 'error', 'message' => 'Empleado inválido.'];
-                    break;
-                }
+            $idsConservados = [];
+            $insertados = 0;
+            $actualizados = 0;
 
-                $stmtUpd = mysqli_prepare($conn, "UPDATE telefono SET telefono = ?, extension = ? WHERE idTelefono = ? AND noEmpleado = ?");
-                $stmtIns = mysqli_prepare($conn, "INSERT INTO telefono (noEmpleado, telefono, extension, tipo) VALUES (?, ?, ?, 2)");
+            foreach ($ids as $i => $idTel) {
+                $idTel = intval($idTel);
+                $tel   = trim((string)($telefonos[$i]   ?? ''));
+                $ext   = trim((string)($extensiones[$i] ?? ''));
 
-                $idsConservados = [];
-                $insertados = 0;
-                $actualizados = 0;
+                // Omitir filas completamente vacías
+                if ($tel === '' && $ext === '') continue;
 
-                foreach ($ids as $i => $idTel) {
-                    $idTel = intval($idTel);
-                    $tel   = trim((string)($telefonos[$i]   ?? ''));
-                    $ext   = trim((string)($extensiones[$i] ?? ''));
-
-                    // Omitir filas completamente vacías
-                    if ($tel === '' && $ext === '') continue;
-
-                    if ($idTel > 0) {
-                        mysqli_stmt_bind_param($stmtUpd, 'ssii', $tel, $ext, $idTel, $noEmpleado);
-                        mysqli_stmt_execute($stmtUpd);
-                        $actualizados += mysqli_stmt_affected_rows($stmtUpd);
-                        $idsConservados[] = $idTel;
-                    } else {
-                        mysqli_stmt_bind_param($stmtIns, 'iss', $noEmpleado, $tel, $ext);
-                        if (mysqli_stmt_execute($stmtIns)) {
-                            $insertados++;
-                            $idsConservados[] = mysqli_insert_id($conn);
-                        }
+                if ($idTel > 0) {
+                    mysqli_stmt_bind_param($stmtUpd, 'ssii', $tel, $ext, $idTel, $noEmpleado);
+                    mysqli_stmt_execute($stmtUpd);
+                    $actualizados += mysqli_stmt_affected_rows($stmtUpd);
+                    $idsConservados[] = $idTel;
+                } else {
+                    mysqli_stmt_bind_param($stmtIns, 'iss', $noEmpleado, $tel, $ext);
+                    if (mysqli_stmt_execute($stmtIns)) {
+                        $insertados++;
+                        $idsConservados[] = mysqli_insert_id($conn);
                     }
                 }
-                mysqli_stmt_close($stmtUpd);
-                mysqli_stmt_close($stmtIns);
+            }
+            mysqli_stmt_close($stmtUpd);
+            mysqli_stmt_close($stmtIns);
 
-                // DELETE: borrar del empleado lo que no se conservó
-                $eliminados = 0;
-                if (!empty($idsConservados)) {
-                    $idsConservados = array_map('intval', $idsConservados);
-                    $whereExtra = " AND idTelefono NOT IN (" . implode(',', $idsConservados) . ")";
-                } else {
-                    $whereExtra = '';
-                }
-                if (mysqli_query($conn, "DELETE FROM telefono WHERE noEmpleado = $noEmpleado $whereExtra")) {
-                    $eliminados = mysqli_affected_rows($conn);
-                }
+            // DELETE: borrar del empleado lo que no se conservó
+            $eliminados = 0;
+            if (!empty($idsConservados)) {
+                $idsConservados = array_map('intval', $idsConservados);
+                $whereExtra = " AND idTelefono NOT IN (" . implode(',', $idsConservados) . ")";
+            } else {
+                $whereExtra = '';
+            }
+            if (mysqli_query($conn, "DELETE FROM telefono WHERE noEmpleado = $noEmpleado $whereExtra")) {
+                $eliminados = mysqli_affected_rows($conn);
+            }
 
+            $response = [
+                'status' => 'success',
+                'message' => "Teléfonos guardados."
+            ];
+            break;
+
+        // Cambia la foto del colaborador.
+        // Permisos: super-usuarios (5, 403) o el propio empleado actualizando su foto.
+        case 'actualizar_foto_usuario':
+            $noEmpleado = intval($_POST['noEmpleado']);
+            $sesionEmp  = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmpleadoGP']) : 0;
+
+            if ($noEmpleado <= 0) {
+                $response = ['status' => 'error', 'message' => 'Empleado inválido.'];
+                break;
+            }
+            if ($sesionEmp !== 5 && $sesionEmp !== 403 && $sesionEmp !== $noEmpleado) {
+                $response = ['status' => 'error', 'message' => 'Sin permisos para cambiar esta foto.'];
+                break;
+            }
+            if (!isset($_FILES['foto']) || $_FILES['foto']['error'] !== UPLOAD_ERR_OK) {
+                $response = ['status' => 'error', 'message' => 'Archivo no recibido o corrupto.'];
+                break;
+            }
+
+            $file = $_FILES['foto'];
+            if ($file['size'] > 2 * 1024 * 1024) {
+                $response = ['status' => 'error', 'message' => 'La imagen no debe superar 2MB.'];
+                break;
+            }
+
+            // MIME real, no el reportado por el navegador
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime  = finfo_file($finfo, $file['tmp_name']);
+            finfo_close($finfo);
+
+            $mapaExt = ['image/jpeg' => 'jpg', 'image/png' => 'png'];
+            if (!isset($mapaExt[$mime])) {
+                $response = ['status' => 'error', 'message' => 'Solo se aceptan imágenes JPG o PNG.'];
+                break;
+            }
+            $ext = $mapaExt[$mime];
+
+            // Las fotos viven en loginMaster (compartidas con ese módulo).
+            // En BD se guardan en formato relativo "img/ProfilePictures/X.jpg" (consistente
+            // con las fotos viejas existentes). Quien consume la URL prepone "/loginMaster/"
+            // o "../loginMaster/" según contexto.
+            $db_prefix  = "img/ProfilePictures/";
+            $target_dir = "../loginMaster/" . $db_prefix;
+            if (!is_dir($target_dir)) {
+                mkdir($target_dir, 0777, true);
+            }
+
+            // Borrar foto anterior solo si vive dentro de ProfilePictures (incluye fotos
+            // viejas tipo "img/ProfilePictures/123.jpg" y nuevas "..._timestamp.jpg").
+            $resActual    = mysqli_query($conn, "SELECT foto FROM usuarios WHERE noEmpleado = $noEmpleado");
+            $rowActual    = $resActual ? mysqli_fetch_assoc($resActual) : null;
+            $fotoAnterior = $rowActual['foto'] ?? '';
+            if ($fotoAnterior !== '' && strpos($fotoAnterior, $db_prefix) === 0) {
+                $fsAnterior = '../loginMaster/' . $fotoAnterior;
+                if (file_exists($fsAnterior)) {
+                    @unlink($fsAnterior);
+                }
+            }
+
+            $newName     = $noEmpleado . '_' . time() . '.' . $ext;
+            $target_file = $target_dir . $newName;
+            $db_value    = $db_prefix . $newName;
+
+            if (!move_uploaded_file($file['tmp_name'], $target_file)) {
+                $response = ['status' => 'error', 'message' => 'Error al guardar el archivo.'];
+                break;
+            }
+
+            $db_value_sql = mysqli_real_escape_string($conn, $db_value);
+            if (mysqli_query($conn, "UPDATE usuarios SET foto = '$db_value_sql' WHERE noEmpleado = $noEmpleado")) {
+                // Si el usuario actualiza su propia foto, refrescamos la cookie del encabezado
+                if ($sesionEmp === $noEmpleado) {
+                    setcookie('fotoGP', $db_value, [
+                        'expires'  => time() + 86400,
+                        'path'     => '/',
+                        'samesite' => 'Lax'
+                    ]);
+                }
                 $response = [
-                    'status' => 'success',
-                    'message' => "Teléfonos guardados."
+                    'status'   => 'success',
+                    'message'  => 'Foto actualizada.',
+                    'foto_url' => $db_value
                 ];
-                break;
+            } else {
+                @unlink($target_file);
+                $response = ['status' => 'error', 'message' => 'Error en BD: ' . mysqli_error($conn)];
+            }
+            break;
 
-            // Cambia la foto del colaborador.
-            // Permisos: super-usuarios (5, 403) o el propio empleado actualizando su foto.
-            case 'actualizar_foto_usuario':
-                $noEmpleado = intval($_POST['noEmpleado']);
-                $sesionEmp  = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmpleadoGP']) : 0;
-
-                if ($noEmpleado <= 0) {
-                    $response = ['status' => 'error', 'message' => 'Empleado inválido.'];
-                    break;
-                }
-                if ($sesionEmp !== 5 && $sesionEmp !== 403 && $sesionEmp !== $noEmpleado) {
-                    $response = ['status' => 'error', 'message' => 'Sin permisos para cambiar esta foto.'];
-                    break;
-                }
-                if (!isset($_FILES['foto']) || $_FILES['foto']['error'] !== UPLOAD_ERR_OK) {
-                    $response = ['status' => 'error', 'message' => 'Archivo no recibido o corrupto.'];
-                    break;
-                }
-
-                $file = $_FILES['foto'];
-                if ($file['size'] > 2 * 1024 * 1024) {
-                    $response = ['status' => 'error', 'message' => 'La imagen no debe superar 2MB.'];
-                    break;
-                }
-
-                // MIME real, no el reportado por el navegador
-                $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                $mime  = finfo_file($finfo, $file['tmp_name']);
-                finfo_close($finfo);
-
-                $mapaExt = ['image/jpeg' => 'jpg', 'image/png' => 'png'];
-                if (!isset($mapaExt[$mime])) {
-                    $response = ['status' => 'error', 'message' => 'Solo se aceptan imágenes JPG o PNG.'];
-                    break;
-                }
-                $ext = $mapaExt[$mime];
-
-                // Las fotos viven en loginMaster (compartidas con ese módulo).
-                // En BD se guardan en formato relativo "img/ProfilePictures/X.jpg" (consistente
-                // con las fotos viejas existentes). Quien consume la URL prepone "/loginMaster/"
-                // o "../loginMaster/" según contexto.
-                $db_prefix  = "img/ProfilePictures/";
-                $target_dir = "../loginMaster/" . $db_prefix;
-                if (!is_dir($target_dir)) {
-                    mkdir($target_dir, 0777, true);
-                }
-
-                // Borrar foto anterior solo si vive dentro de ProfilePictures (incluye fotos
-                // viejas tipo "img/ProfilePictures/123.jpg" y nuevas "..._timestamp.jpg").
-                $resActual    = mysqli_query($conn, "SELECT foto FROM usuarios WHERE noEmpleado = $noEmpleado");
-                $rowActual    = $resActual ? mysqli_fetch_assoc($resActual) : null;
-                $fotoAnterior = $rowActual['foto'] ?? '';
-                if ($fotoAnterior !== '' && strpos($fotoAnterior, $db_prefix) === 0) {
-                    $fsAnterior = '../loginMaster/' . $fotoAnterior;
-                    if (file_exists($fsAnterior)) {
-                        @unlink($fsAnterior);
-                    }
-                }
-
-                $newName     = $noEmpleado . '_' . time() . '.' . $ext;
-                $target_file = $target_dir . $newName;
-                $db_value    = $db_prefix . $newName;
-
-                if (!move_uploaded_file($file['tmp_name'], $target_file)) {
-                    $response = ['status' => 'error', 'message' => 'Error al guardar el archivo.'];
-                    break;
-                }
-
-                $db_value_sql = mysqli_real_escape_string($conn, $db_value);
-                if (mysqli_query($conn, "UPDATE usuarios SET foto = '$db_value_sql' WHERE noEmpleado = $noEmpleado")) {
-                    // Si el usuario actualiza su propia foto, refrescamos la cookie del encabezado
-                    if ($sesionEmp === $noEmpleado) {
-                        setcookie('fotoGP', $db_value, [
-                            'expires'  => time() + 86400,
-                            'path'     => '/',
-                            'samesite' => 'Lax'
-                        ]);
-                    }
-                    $response = [
-                        'status'   => 'success',
-                        'message'  => 'Foto actualizada.',
-                        'foto_url' => $db_value
-                    ];
-                } else {
-                    @unlink($target_file);
-                    $response = ['status' => 'error', 'message' => 'Error en BD: ' . mysqli_error($conn)];
-                }
-                break;
-
-            // ============================================================================
+        // ============================================================================
         // 🆕 CASO ADICIONAL: ALTA COMPLETA DE COLABORADORES EN EL EXPEDIENTE
         // ============================================================================
         case 'registrar_nuevo_empleado_sistema':
@@ -836,35 +836,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
             break;
 
-        case 'guardar_jefes_tecnicos_empleado':
-
-            $id_empleado = intval($_POST['id_usuario_empleado']);
-            $alcances = isset($_POST['alcances']) ? json_decode($_POST['alcances'], true) : [];
-
-            mysqli_begin_transaction($conn);
-
-            foreach ($alcances as $alcance) {
-
-                $id_jefe  = intval($alcance['id_jefe_tecnico']);
-                $id_depto = intval($alcance['id_departamento']);
-
-                mysqli_query(
-                    $conn,
-                    "INSERT INTO expediente_jefes_tecnicos
-                    (id_usuario_empleado, id_usuario_jefe_tecnico, id_departamento)
-                    VALUES
-                    ($id_empleado, $id_jefe, $id_depto)"
-                );
-            }
-
-            mysqli_commit($conn);
-
-            $response = [
-                'status' => 'success',
-                'message' => 'Jefes técnicos registrados con éxito.'
-            ];
-
-        break;
         case 'obtener_ultimo_no_empleado':
             $query = "SELECT MAX(noEmpleado) AS max_noEmpleado FROM usuarios where noEmpleado < 1000";
             $result = mysqli_query($conn, $query);
