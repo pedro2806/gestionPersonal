@@ -1,12 +1,13 @@
 <?php
-header('Content-Type: application/json');
-$conn = mysqli_connect("localhost", "mess_incidencias", "Pipmytrade123", "mess_rrhh");
-mysqli_set_charset($conn, "utf8mb4");
+header('Content-Type: application/json; charset=utf-8');
+require_once 'conn.php';
 
-$response = ''; ['status' => 'error', 'message' => 'Acción no válida.'];
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['status' => 'error', 'message' => 'Método no autorizado.']);
+    exit;
+}
 
-///if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    $action = $_POST['action'];
+$action = isset($_POST['action']) ? trim($_POST['action']) : '';    
 
     switch ($action) {
         case 'obtener_tipos_documentos_disponibles':
