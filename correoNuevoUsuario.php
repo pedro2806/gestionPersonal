@@ -53,7 +53,7 @@ require __DIR__ . '/libs/PHPMailer/src/SMTP.php';
         
         // Contenido HTML - DISEÑO CORPORATIVO TIPO FACEBOOK
         $mail->isHTML(true);
-$mail->Subject = 'Recuperación de contraseña - Messbook';
+$mail->Subject = 'Bienvenido - Messbook';
 
 $mail->Body = '
 <!DOCTYPE html>
