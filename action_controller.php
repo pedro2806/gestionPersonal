@@ -3,7 +3,7 @@ header('Content-Type: application/json');
 $conn = mysqli_connect("localhost", "mess_incidencias", "Pipmytrade123", "mess_rrhh");
 mysqli_set_charset($conn, "utf8mb4");
 
-//$response = ['status' => 'error', 'message' => 'Acción no válida.'];
+$response = ''; ['status' => 'error', 'message' => 'Acción no válida.'];
 
 ///if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
