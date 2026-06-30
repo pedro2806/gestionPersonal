@@ -5,7 +5,7 @@ mysqli_set_charset($conn, "utf8mb4");
 
 //$response = ['status' => 'error', 'message' => 'Acción no válida.'];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+///if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
 
     switch ($action) {
@@ -881,7 +881,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
 
     }
-}
+///}
 echo json_encode($response);
 exit;
 ?>
