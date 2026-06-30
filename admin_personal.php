@@ -232,13 +232,17 @@ require_once 'conn.php';
                                         <label class="small text-muted font-weight-bold mb-1">NSS (Seguro Social)</label>
                                         <input type="text" class="form-control shadow-none" name="mod_nss" id="mod_nss" maxlength="11">
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <label class="small text-muted font-weight-bold mb-1">Tipo de Contrato</label>
                                         <input type="text" class="form-control shadow-none" name="mod_tipoContrato" id="mod_tipoContrato">
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <label class="small text-muted font-weight-bold mb-1">Tipo de Sangre</label>
                                         <input type="text" class="form-control shadow-none" name="mod_tipoSangre" id="mod_tipoSangre" maxlength="5">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="small text-muted font-weight-bold mb-1">Nave</label>
+                                        <select class="form-select shadow-none"  name="mod_nave" id="mod_nave"></select>
                                     </div>
                                 </div>
                                 <div class="row g-3 mt-2 border-top pt-3">

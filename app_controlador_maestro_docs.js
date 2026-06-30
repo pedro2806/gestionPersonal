@@ -407,6 +407,10 @@ function preparar_selects_catalogos_usuario() {
                 let html_jef = '<option value="0">-- Sin Jefe Asignado / Es Dirección --</option>';
                 res.jefes.forEach(function(j) { html_jef += `<option value="${j.noEmpleado}">${j.nombre}</option>`; });
                 $('#mod_jefe').html(html_jef);
+
+                let html_nave = '<option value="0">-- Sin Nave</option>';
+                res.naves.forEach(function(n) { html_nave += `<option value="${n.idNave}">${n.nave}</option>`; });
+                $('#mod_nave').html(html_nave);
                 
                 // GUARDAMOS EN CACHÉ: Toda la lista de líderes para alimentar el alta completo
                 cache_jefes_admin_html = html_jef;
@@ -438,6 +442,8 @@ function abrir_modal_editar_usuario(noEmpleado) {
                 $('#mod_tipoContrato').val(u.tipoContrato);
                 $('#mod_tipoSangre').val(u.tipoSangre);
                 $('#mod_fechaIngreso').val(u.fechaIngreso);
+                $('#mod_nave').val(u.nave)
+
                 $('#modal_editar_usuario').modal('show');
             } else {
                 Swal.fire('Error', res.message, 'error');

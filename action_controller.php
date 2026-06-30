@@ -457,7 +457,7 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
         // 1. Obtener los datos completos de un usuario para cargar el formulario de edición
         case 'obtener_datos_usuario_edicion':
             $noEmpleado = intval($_POST['noEmpleado']);
-            $query = "SELECT noEmpleado, nombre, correo, departamento, puesto, jefe, tipoContrato, sexo, nss, rfc, curp, tipoSangre, fechaIngreso, foto FROM usuarios WHERE noEmpleado = $noEmpleado";
+            $query = "SELECT noEmpleado, nombre, correo, departamento, puesto, jefe, tipoContrato, sexo, nss, rfc, curp, tipoSangre, fechaIngreso, foto, nave FROM usuarios WHERE noEmpleado = $noEmpleado";
             $res = mysqli_query($conn, $query);
             if ($res && mysqli_num_rows($res) > 0) {
                 $response = ['status' => 'success', 'data' => mysqli_fetch_assoc($res)];
@@ -482,6 +482,7 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
             $curp = mysqli_real_escape_string($conn, $_POST['mod_curp']);
             $tipoSangre = mysqli_real_escape_string($conn, $_POST['mod_tipoSangre']);
             $fechaIngreso = mysqli_real_escape_string($conn, $_POST['mod_fechaIngreso']);
+            $nave = mysqli_real_escape_string($conn, $_POST['mod_nave']);
 
             $query = "UPDATE usuarios SET
                         nombre = '$nombre',
@@ -495,8 +496,9 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
                         rfc = '$rfc',
                         curp = '$curp',
                         tipoSangre = '$tipoSangre',
-                        fechaIngreso = '$fechaIngreso'
-                      WHERE noEmpleado = $noEmpleado";
+                        fechaIngreso = '$fechaIngreso',
+                        nave = '$nave'
+                        WHERE noEmpleado = $noEmpleado";
 
             if (mysqli_query($conn, $query)) {
                 $response = ['status' => 'success', 'message' => 'Colaborador actualizado con éxito.'];
@@ -539,11 +541,18 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
             $jefes = [];
             while($r = mysqli_fetch_assoc($res_jefes)) { $jefes[] = $r; }
 
+            // 4. Obtener todas las naves
+            $q_naves = "SELECT idNave, nave FROM nave ORDER BY nave ASC";
+            $res_naves = mysqli_query($conn, $q_naves);
+            $naves = [];
+            while($r = mysqli_fetch_assoc($res_naves)) { $naves[] = $r; }
+
             $response = [
                 'status' => 'success',
                 'departamentos' => $deptos,
                 'puestos' => $puestos,
-                'jefes' => $jefes
+                'jefes' => $jefes,
+                'naves' => $naves
             ];
             break;
 
@@ -675,7 +684,7 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
                 $response = ['status' => 'error', 'message' => 'Empleado inválido.'];
                 break;
             }
-            if ($sesionEmp !== 5 && $sesionEmp !== 403 && $sesionEmp !== $noEmpleado) {
+            if ($sesionEmp !== 569 && $sesionEmp !== 5 && $sesionEmp !== 403 && $sesionEmp !== $noEmpleado) {
                 $response = ['status' => 'error', 'message' => 'Sin permisos para cambiar esta foto.'];
                 break;
             }
