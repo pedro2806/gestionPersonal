@@ -389,49 +389,85 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
             });
         }
 
+        // Mapeo de contenidos por especialidad
+        const contenidos_especialidades = {
+            'Interpretación de planos': ['Introducción a la interpretación de planos', 'Elementos básicos de un plano', 'Normas y estándares', 'Tipos de proyecciones', 'Dimensiones y tolerancias', 'Análisis de planos', 'Herramientas de interpretación', 'Casos prácticos', 'Aplicaciones en la industria'],
+            'Tolerancias geométricas y dimensionales': ['Introducción al GD&T', 'Fundamentos de GD&T', 'Normas y Estándares', 'Tipos de tolerancias', 'Tolerancias Geométricas', 'Aplicación de GD&T en el diseño', 'Inspección y verificación', 'Software y herramientas', 'Casos Prácticos'],
+            'Rugosidad de superficies': ['Introducción a la rugosidad superficial', 'Fundamentos de rugosidad superficial', 'Tipos de rugosidad', 'Formulas de parámetros', 'Normas relacionadas a la rugosidad'],
+            'Perfilometría': ['Perfilometria', 'Principios fundamentales', 'Métodos de medición', 'Aplicaciones del la perfilometria', 'Importancia en el control de calidad', 'Perfilometros', 'Ejemplos prácticos de perfilometría', 'Normas relacionadas a la perfilometría'],
+            'Calypso Básico': [],
+            'Uso y manejo de máquina unidimensional': [],
+            'Calibración de bloques patrón (incluido el cálculo de incertidumbre)': [],
+            'Medición en perfilómetro (avanzado)': [],
+            'Medición en rugosímetro (avanzado)': [],
+            'Incertidumbres I': [],
+            'Incertidumbres II': [],
+            'Evaluación/ Interpretación de la incertidumbre': []
+        };
+
         function renderizar_especialidades() {
             if (!dataEspecialidades || !dataEspecialidades.especialidades || dataEspecialidades.especialidades.length === 0) {
                 return;
             }
 
-            let html = '';
-            let cursos = dataEspecialidades.especialidades;
+            let html = `
+            <div class="col-12 mt-4">
+                <div class="card shadow-sm border">
+                    <div class="card-header py-3" style="background-color: #0066cc;">
+                        <h6 class="mb-0 font-weight-bold text-white text-uppercase small">${dataEspecialidades.nombre_lab}</h6>
+                    </div>
+                    <div class="card-body p-3">`;
 
-            let filas = '';
-            cursos.forEach(function(c) {
+            dataEspecialidades.especialidades.forEach(function(c, idx) {
                 let badge = '';
                 if (c.resultado === 'APROBADO') badge = '<span class="badge bg-success text-white border-0 px-2 py-1 font-weight-bold">APROBADO</span>';
                 else if (c.resultado === 'REPROBADO') badge = '<span class="badge bg-danger text-white border-0 px-2 py-1 font-weight-bold">REPROBADO</span>';
                 else badge = '<span class="badge bg-warning text-dark border-0 px-2 py-1 font-weight-bold">PENDIENTE</span>';
 
                 let fechaLabel = '';
-                if (c.fecha && c.resultado === 'APROBADO') fechaLabel = `<span class="text-success small">${c.fecha}</span>`;
-                else if (c.fecha && !c.resultado) fechaLabel = `<span class="text-danger small" title="Fecha de cierre">${c.fecha}</span>`;
+                if (c.fecha && c.resultado === 'APROBADO') fechaLabel = `<span class="small text-success ms-2">${c.fecha}</span>`;
+                else if (c.fecha && !c.resultado) fechaLabel = `<span class="small text-danger ms-2" title="Fecha de cierre">${c.fecha}</span>`;
 
-                filas += `<tr>
-                    <td class="ps-3 py-2 text-dark">${c.nombre_curso}</td>
-                    <td class="text-center py-2">${badge}</td>
-                    <td class="text-center py-2">${fechaLabel}</td>
-                </tr>`;
+                let contenido = contenidos_especialidades[c.nombre_curso] || [];
+                let idAccordion = 'especialidad_' + idx;
+                let contenidoHtml = '';
+
+                if (contenido.length > 0) {
+                    contenidoHtml = `
+                    <div class="accordion" id="accord_${idAccordion}">
+                        <div class="accordion-item border-0">
+                            <h2 class="accordion-header border-0">
+                                <button class="accordion-button collapsed shadow-none py-2" type="button" data-bs-toggle="collapse" data-bs-target="#${idAccordion}" aria-expanded="false">
+                                    <small class="text-muted">Ver contenido</small>
+                                </button>
+                            </h2>
+                            <div id="${idAccordion}" class="accordion-collapse collapse" data-bs-parent="#accord_${idAccordion}">
+                                <div class="accordion-body p-2 pt-0">
+                                    <ul class="small mb-0" style="padding-left: 1.5rem;">
+                                        ${contenido.map(t => `<li class="text-muted">${t}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+
+                html += `
+                <div class="mb-3 pb-3 border-bottom">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h6 class="mb-1 text-dark font-weight-bold small">${c.nombre_curso}</h6>
+                            ${contenidoHtml}
+                        </div>
+                        <div class="text-end">
+                            ${badge}
+                            ${fechaLabel}
+                        </div>
+                    </div>
+                </div>`;
             });
 
-            html = `
-            <div class="col-md-6 col-lg-4">
-                <div class="card shadow-sm border h-100">
-                    <div class="card-header bg-white border-bottom py-2">
-                        <h6 class="mb-0 font-weight-bold text-dark small text-uppercase">${dataEspecialidades.nombre_lab}</h6>
-                    </div>
-                    <div class="card-body p-0">
-                        <table class="table table-sm table-hover mb-0 small">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="ps-3 py-2 text-muted" style="font-size:0.72rem;">Especialidad</th>
-                                    <th class="text-center py-2 text-muted" style="font-size:0.72rem;">Resultado</th>
-                                    <th class="text-center py-2 text-muted" style="font-size:0.72rem;">Fecha</th>
-                                </tr>
-                            </thead>
-                            <tbody>${filas}</tbody>
-                        </table>
+            html += `
                     </div>
                 </div>
             </div>`;
