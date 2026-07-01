@@ -684,7 +684,7 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
                 $response = ['status' => 'error', 'message' => 'Empleado inválido.'];
                 break;
             }
-            if ($sesionEmp !== 569 && $sesionEmp !== 5 && $sesionEmp !== 403 && $sesionEmp !== $noEmpleado) {
+            if ($sesionEmp !== 276 &&$sesionEmp !== 569 && $sesionEmp !== 5 && $sesionEmp !== 403 && $sesionEmp !== $noEmpleado) {
                 $response = ['status' => 'error', 'message' => 'Sin permisos para cambiar esta foto.'];
                 break;
             }
@@ -715,8 +715,11 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
             // En BD se guardan en formato relativo "img/ProfilePictures/X.jpg" (consistente
             // con las fotos viejas existentes). Quien consume la URL prepone "/loginMaster/"
             // o "../loginMaster/" según contexto.
+
+            $base_dir = dirname(__DIR__);            
             $db_prefix  = "img/ProfilePictures/";
-            $target_dir = "../loginMaster/" . $db_prefix;
+            //$target_dir = "../loginMaster/" . $db_prefix;
+            $target_dir = $base_dir . "/loginMaster/" . $db_prefix;
             if (!is_dir($target_dir)) {
                 mkdir($target_dir, 0777, true);
             }
