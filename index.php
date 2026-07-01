@@ -394,6 +394,9 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
                 return;
             }
 
+            // Remover tarjetas de especialidades previas
+            $('.card-especialidad').remove();
+
             let html = '';
             let cursos = dataEspecialidades.especialidades;
 
@@ -416,7 +419,7 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
             });
 
             html = `
-            <div class="col-md-6 col-lg-4">
+            <div class="col-md-6 col-lg-4 card-especialidad">
                 <div class="card shadow-sm border h-100">
                     <div class="card-header bg-white border-bottom py-2">
                         <h6 class="mb-0 font-weight-bold text-dark small text-uppercase">${dataEspecialidades.nombre_lab}</h6>
