@@ -813,13 +813,13 @@ case 'registrar_nuevo_empleado_sistema':
             } else {
                 $user_part = strstr($correo, '@', true) ?: $correo;
             }
-            $password = md5($user_part);
+            $password = $user_part;
                 
             // Inserción de usuario
             $q_insert = "INSERT INTO usuarios 
-                            (noEmpleado, nombre, correo, sexo, fechaIngreso, departamento, puesto, jefe, curp, rfc, nss, tipoContrato, tipoSangre, foto, estatus, usuario, password, password_restaurar) 
+                            (noEmpleado, nombre, correo, sexo, fechaIngreso, departamento, puesto, jefe, curp, rfc, nss, tipoContrato, tipoSangre, foto, estatus, usuario, password, password_restaurar, rol) 
                         VALUES 
-                            ($noEmpleado, '$nombre', '$correo', '$sexo', '$fechaIngreso', $departamento, $puesto, $jefe, '$curp', '$rfc', '$nss', '$tipoContrato', '$tipoSangre', '$foto_default', 1, '$usuario', '$password', '$user_part')";
+                            ($noEmpleado, '$nombre', '$correo', '$sexo', '$fechaIngreso', $departamento, $puesto, $jefe, '$curp', '$rfc', '$nss', '$tipoContrato', '$tipoSangre', '$foto_default', 1, '$usuario', '$password', '$user_part',1)";
 
             if (mysqli_query($conn, $q_insert)) {
     
