@@ -199,6 +199,124 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             $response = ['status' => 'success', 'laboratorios' => $laboratorios];
             break;
+
+        case 'obtener_especialidades_laboratorio':
+            $correo = isset($_POST['correo']) ? trim($_POST['correo']) : '';
+            $noEmpleado = isset($_POST['noEmpleado']) ? intval($_POST['noEmpleado']) : 0;
+
+            if ($correo === '' || $noEmpleado === 0) {
+                $response = ['status' => 'error', 'message' => 'Correo y noEmpleado son obligatorios.'];
+                break;
+            }
+
+            // Conexión a mess_rrhh para obtener datos del usuario
+            $conn_rrhh = new mysqli("localhost", "mess_incidencias", "Pipmytrade123", "mess_rrhh");
+            if ($conn_rrhh->connect_error) {
+                $response = ['status' => 'error', 'message' => 'Error conectando a BD RRHH'];
+                break;
+            }
+
+            // Obtener departamento y puesto del usuario
+            $query_user = "SELECT u.departamento, p.puesto FROM usuarios u
+                          LEFT JOIN puesto p ON u.puesto = p.id
+                          WHERE u.noEmpleado = ? LIMIT 1";
+            $stmt = $conn_rrhh->prepare($query_user);
+            $stmt->bind_param("i", $noEmpleado);
+            $stmt->execute();
+            $res_user = $stmt->get_result();
+
+            $es_jefe_lab = false;
+            $departamento_usuario = 0;
+
+            if ($row_user = $res_user->fetch_assoc()) {
+                $departamento_usuario = intval($row_user['departamento']);
+                $puesto_lower = strtolower($row_user['puesto']);
+
+                // Verificar si es Jefe de Laboratorio (puesto 52 o 61)
+                if (strpos($puesto_lower, 'jefe') !== false && strpos($puesto_lower, 'laboratorio') !== false) {
+                    $es_jefe_lab = true;
+                }
+            }
+
+            $conn_rrhh->close();
+
+            // Si NO es jefe de lab, no mostrar esta sección
+            if (!$es_jefe_lab || $departamento_usuario === 0) {
+                $response = ['status' => 'success', 'es_jefe' => false, 'especialidades' => []];
+                break;
+            }
+
+            // Mapeo de departamentos a cursos de especialidad
+            // Depto 15 = CALIBRACIONES, Depto 16 = DIMENSIONAL
+            $cursos_por_depto = [
+                16 => [6166, 6236, 6269, 5605],      // DIMENSIONAL: Interpretación, Tolerancias, Rugosidad, Calypso
+                15 => [5626, 6340]                   // CALIBRACIONES: Incertidumbres I, II
+            ];
+
+            if (!isset($cursos_por_depto[$departamento_usuario])) {
+                $response = ['status' => 'success', 'es_jefe' => true, 'especialidades' => []];
+                break;
+            }
+
+            $ids_cursos = $cursos_por_depto[$departamento_usuario];
+            $ids_str = implode(',', $ids_cursos);
+
+            // Obtener cursos de Masteriyo
+            $correo_esc = mysqli_real_escape_string($conn_cap, $correo);
+            $q_cursos_esp = "SELECT
+                    p.ID,
+                    p.post_title AS nombre_curso,
+                    ua.activity_status AS estatus,
+                    ua.completed_at
+                FROM wp_posts p
+                LEFT JOIN wp_masteriyo_user_activities ua ON ua.item_id = p.ID
+                    AND ua.activity_type = 'course_progress'
+                    AND ua.user_id = (SELECT ID FROM wp_users WHERE user_email = '$correo_esc' LIMIT 1)
+                WHERE p.ID IN ($ids_str)
+                AND p.post_type = 'mto-course'
+                ORDER BY p.post_title";
+
+            $res_esp = mysqli_query($conn_cap, $q_cursos_esp);
+            $especialidades = [];
+
+            if ($res_esp) {
+                while ($row = mysqli_fetch_assoc($res_esp)) {
+                    $resultado = '';
+                    $fecha = '';
+
+                    if ($row['estatus'] === 'completed') {
+                        $resultado = 'APROBADO';
+                        if (!empty($row['completed_at'])) {
+                            $fecha = date('d/m/Y', strtotime($row['completed_at']));
+                        }
+                    } elseif ($row['estatus'] === 'failed') {
+                        $resultado = 'REPROBADO';
+                    } else {
+                        $resultado = 'PENDIENTE';
+                    }
+
+                    $especialidades[] = [
+                        'id_curso' => $row['ID'],
+                        'nombre_curso' => $row['nombre_curso'],
+                        'resultado' => $resultado,
+                        'fecha' => $fecha
+                    ];
+                }
+            }
+
+            // Nombre del lab
+            $nombres_labs = [
+                16 => 'Especialidades Dimensional',
+                15 => 'Especialidades Calibración'
+            ];
+
+            $response = [
+                'status' => 'success',
+                'es_jefe' => true,
+                'nombre_lab' => $nombres_labs[$departamento_usuario] ?? 'Especialidades',
+                'especialidades' => $especialidades
+            ];
+            break;
     }
 }
 

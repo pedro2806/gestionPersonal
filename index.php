@@ -127,6 +127,17 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
                                 <div id="contenedor_niveles_cursos" class="row g-3">
                                     <div class="col-12 text-center text-muted py-3 small">Cargando cursos...</div>
                                 </div>
+
+                                <!-- ESPECIALIDADES DE LABORATORIO (solo para Jefes de Lab) -->
+                                <div id="contenedor_especialidades_seccion" class="row g-3" style="display:none;">
+                                    <div class="col-12 mt-4 mb-2">
+                                        <hr class="border-secondary" style="opacity: 0.3;">
+                                        <h6 class="text-dark font-weight-bold text-uppercase" id="titulo_especialidades">Especialidades</h6>
+                                    </div>
+                                    <div id="contenedor_especialidades_cursos" class="row g-3 w-100">
+                                        <div class="col-12 text-center text-muted py-3 small">Cargando especialidades...</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -228,6 +239,7 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
                         if (response.data.correo) {
                             cargar_cursos_por_nivel(response.data.correo, response.data.puesto);
                             cargar_procedimientos(response.data.correo);
+                            cargar_especialidades_laboratorio(response.data.correo, response.data.noEmpleado);
                         }
                     }
                 }
@@ -246,6 +258,7 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
                     if (response.status === 'success' && response.data.correo) {
                         cargar_cursos_por_nivel(response.data.correo, response.data.puesto);
                         cargar_procedimientos(response.data.correo);
+                        cargar_especialidades_laboratorio(response.data.correo, response.data.noEmpleado);
                     }
                 }
             });
@@ -363,6 +376,78 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
         $(document).on('change', '#filtro_resultado_capacitacion', function() {
             renderizar_capacitacion($(this).val());
         });
+
+        var dataEspecialidades = null;
+
+        function cargar_especialidades_laboratorio(correo, noEmpleado) {
+            $.ajax({
+                url: 'capacitacion_controller.php',
+                type: 'POST',
+                data: { action: 'obtener_especialidades_laboratorio', correo: correo, noEmpleado: noEmpleado },
+                dataType: 'json',
+                success: function(res) {
+                    if (res.status === 'success' && res.es_jefe) {
+                        dataEspecialidades = res;
+                        $('#titulo_especialidades').text(res.nombre_lab);
+                        renderizar_especialidades();
+                        $('#contenedor_especialidades_seccion').show();
+                    } else {
+                        $('#contenedor_especialidades_seccion').hide();
+                    }
+                }
+            });
+        }
+
+        function renderizar_especialidades() {
+            if (!dataEspecialidades || !dataEspecialidades.especialidades || dataEspecialidades.especialidades.length === 0) {
+                $('#contenedor_especialidades_cursos').html('<div class="col-12 text-center text-muted py-3 small">No hay especialidades disponibles.</div>');
+                return;
+            }
+
+            let html = '';
+            let cursos = dataEspecialidades.especialidades;
+
+            let filas = '';
+            cursos.forEach(function(c) {
+                let badge = '';
+                if (c.resultado === 'APROBADO') badge = '<span class="badge bg-success text-white border-0 px-2 py-1 font-weight-bold">APROBADO</span>';
+                else if (c.resultado === 'REPROBADO') badge = '<span class="badge bg-danger text-white border-0 px-2 py-1 font-weight-bold">REPROBADO</span>';
+                else badge = '<span class="badge bg-warning text-dark border-0 px-2 py-1 font-weight-bold">PENDIENTE</span>';
+
+                let fechaLabel = '';
+                if (c.fecha && c.resultado === 'APROBADO') fechaLabel = `<span class="text-success small">${c.fecha}</span>`;
+                else if (c.fecha && !c.resultado) fechaLabel = `<span class="text-danger small" title="Fecha de cierre">${c.fecha}</span>`;
+
+                filas += `<tr>
+                    <td class="ps-3 py-2 text-dark">${c.nombre_curso}</td>
+                    <td class="text-center py-2">${badge}</td>
+                    <td class="text-center py-2">${fechaLabel}</td>
+                </tr>`;
+            });
+
+            html = `
+            <div class="col-md-6 col-lg-4">
+                <div class="card shadow-sm border h-100">
+                    <div class="card-header bg-white border-bottom py-2">
+                        <h6 class="mb-0 font-weight-bold text-dark small text-uppercase">${dataEspecialidades.nombre_lab}</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm table-hover mb-0 small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3 py-2 text-muted" style="font-size:0.72rem;">Especialidad</th>
+                                    <th class="text-center py-2 text-muted" style="font-size:0.72rem;">Resultado</th>
+                                    <th class="text-center py-2 text-muted" style="font-size:0.72rem;">Fecha</th>
+                                </tr>
+                            </thead>
+                            <tbody>${filas}</tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>`;
+
+            $('#contenedor_especialidades_cursos').html(html);
+        }
 
         function getEmpleadoNombreExport() {
             let sel = $('#select_filtro_empleado_cursos');
