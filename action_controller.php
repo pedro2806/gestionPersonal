@@ -700,9 +700,14 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
             }
 
             // MIME real, no el reportado por el navegador
-            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            /*$finfo = finfo_open(FILEINFO_MIME_TYPE);
             $mime  = finfo_file($finfo, $file['tmp_name']);
             finfo_close($finfo);
+            */
+            $image_info = getimagesize($file['tmp_name']);
+            $mime = $image_info ? $image_info['mime'] : '';
+
+
 
             $mapaExt = ['image/jpeg' => 'jpg', 'image/png' => 'png'];
             if (!isset($mapaExt[$mime])) {
