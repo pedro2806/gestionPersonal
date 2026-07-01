@@ -420,13 +420,13 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
             $id_usuario = intval($_POST['id_usuario']);
             $query = "SELECT u.id, u.noEmpleado, u.nombre AS nombreCompleto, u.correo, p.puesto, u.estatus, d.departamento,
                         (SELECT j.nombre FROM usuarios j WHERE j.noEmpleado = u.jefe) AS jefe_administrativo,
-                        (SELECT GROUP_CONCAT(CONCAT(jt.nombre, ' (', da.departamento, ')') SEPARATOR ', ') 
-                            FROM expediente_jefes_tecnicos ejt 
-                            INNER JOIN usuarios jt ON ejt.id_usuario_jefe_tecnico = jt.id 
-                            INNER JOIN departamento da ON ejt.id_departamento = da.id                            
+                        (SELECT GROUP_CONCAT(CONCAT(jt.nombre, ' (', da.departamento, ')') SEPARATOR ', ')
+                            FROM expediente_jefes_tecnicos ejt
+                            INNER JOIN usuarios jt ON ejt.id_usuario_jefe_tecnico = jt.id
+                            INNER JOIN departamento da ON ejt.id_departamento = da.id
                             WHERE ejt.id_usuario_empleado = u.noEmpleado) AS jefes_tecnicos
-                    FROM usuarios u 
-                    LEFT JOIN departamento d ON u.departamento = d.id 
+                    FROM usuarios u
+                    LEFT JOIN departamento d ON u.departamento = d.id
                     LEFT JOIN puesto p ON u.puesto = p.id WHERE u.noEmpleado = $id_usuario";
             $res = mysqli_query($conn, $query);
             $response = ['status' => 'success', 'data' => mysqli_fetch_assoc($res)];

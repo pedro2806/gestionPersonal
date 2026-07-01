@@ -127,17 +127,6 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
                                 <div id="contenedor_niveles_cursos" class="row g-3">
                                     <div class="col-12 text-center text-muted py-3 small">Cargando cursos...</div>
                                 </div>
-
-                                <!-- ESPECIALIDADES DE LABORATORIO (solo para Jefes de Lab) -->
-                                <div id="contenedor_especialidades_seccion" class="row g-3" style="display:none;">
-                                    <div class="col-12 mt-4 mb-2">
-                                        <hr class="border-secondary" style="opacity: 0.3;">
-                                        <h6 class="text-dark font-weight-bold text-uppercase" id="titulo_especialidades">Especialidades</h6>
-                                    </div>
-                                    <div id="contenedor_especialidades_cursos" class="row g-3 w-100">
-                                        <div class="col-12 text-center text-muted py-3 small">Cargando especialidades...</div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
 
@@ -307,6 +296,7 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
                         dataCapacitacion = res.niveles;
                         $('#filtro_resultado_capacitacion').val('');
                         renderizar_capacitacion('');
+                        renderizar_especialidades();
                     }
                 }
             });
@@ -375,6 +365,7 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
 
         $(document).on('change', '#filtro_resultado_capacitacion', function() {
             renderizar_capacitacion($(this).val());
+            renderizar_especialidades();
         });
 
         var dataEspecialidades = null;
@@ -400,7 +391,6 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
 
         function renderizar_especialidades() {
             if (!dataEspecialidades || !dataEspecialidades.especialidades || dataEspecialidades.especialidades.length === 0) {
-                $('#contenedor_especialidades_cursos').html('<div class="col-12 text-center text-muted py-3 small">No hay especialidades disponibles.</div>');
                 return;
             }
 
@@ -446,7 +436,7 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
                 </div>
             </div>`;
 
-            $('#contenedor_especialidades_cursos').html(html);
+            $('#contenedor_niveles_cursos').append(html);
         }
 
         function getEmpleadoNombreExport() {
