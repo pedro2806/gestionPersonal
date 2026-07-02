@@ -94,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     p.post_title AS nombre_curso,
                     p.ID AS course_id,
                     u.display_name,
+                    u.user_login,
                     ua.activity_status AS estatus,
                     ua.completed_at,
                     MAX(pm_cert.meta_value) AS certificate_id
@@ -104,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 WHERE u.user_email = '$correo_esc'
                   AND ua.activity_type = 'course_progress'
                   AND ua.activity_status IN ('completed', 'failed')
-                GROUP BY p.ID, p.post_title, u.display_name, ua.activity_status, ua.completed_at";
+                GROUP BY p.ID, p.post_title, u.display_name, u.user_login, ua.activity_status, ua.completed_at";
             $res_cursos = mysqli_query($conn_cap, $q_cursos);
 
             $cursos_usuario = [];
@@ -147,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     }
 
                     if (!empty($cu['certificate_id']) && $resultado === 'APROBADO') {
-                        $cert_url = 'https://messbook.com.mx/capacitacion/?course_id=' . $cu['course_id'] . '&certificate_id=' . $cu['certificate_id'] . '&username=' . urlencode($cu['display_name']);
+                        $cert_url = 'https://messbook.com.mx/capacitacion/?course_id=' . $cu['course_id'] . '&certificate_id=' . $cu['certificate_id'] . '&username=' . urlencode($cu['user_login']);
                     }
                 } else {
                     if (isset($fechas_cierre[$key])) {
@@ -248,9 +249,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             // Mapeo de departamentos a cursos de especialidad
             // Depto 15 = CALIBRACIONES, Depto 16 = DIMENSIONAL
+            // Placeholder: especialidades sin ID mapeado aún = array vacío
             $cursos_por_depto = [
                 16 => [6166, 6236, 6269, 5605],      // DIMENSIONAL: Interpretación, Tolerancias, Rugosidad, Calypso
-                15 => [5626, 6340]                   // CALIBRACIONES: Incertidumbres I, II
+                15 => [5626, 6340, 0, 0, 0]          // CALIBRACIONES: Incertidumbres I, II + 3 placeholders
+            ];
+
+            // Nombres de especialidades por departamento (para placeholders)
+            $nombres_especialidades = [
+                16 => ['Interpretación de planos', 'Tolerancias geométricas y dimensionales', 'Rugosidad de superficies', 'Calypso Básico'],
+                15 => ['Uso y manejo de máquina unidimensional', 'Calibración de bloques patrón (incluido el cálculo de incertidumbre)', 'Medición en perfilómetro (avanzado)', 'Medición en rugosímetro (avanzado)', 'Evaluación/ Interpretación de la incertidumbre']
             ];
 
             if (!isset($cursos_por_depto[$departamento_usuario])) {
@@ -278,6 +286,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             $res_esp = mysqli_query($conn_cap, $q_cursos_esp);
             $especialidades = [];
+            $cursos_encontrados = [];
 
             if ($res_esp) {
                 while ($row = mysqli_fetch_assoc($res_esp)) {
@@ -301,6 +310,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         'resultado' => $resultado,
                         'fecha' => $fecha
                     ];
+                    $cursos_encontrados[] = $row['ID'];
+                }
+            }
+
+            // Agregar placeholders para cursos sin ID aún
+            if (isset($nombres_especialidades[$departamento_usuario])) {
+                foreach ($ids_cursos as $idx => $id_curso) {
+                    if ($id_curso === 0 && isset($nombres_especialidades[$departamento_usuario][$idx])) {
+                        $especialidades[] = [
+                            'id_curso' => 0,
+                            'nombre_curso' => $nombres_especialidades[$departamento_usuario][$idx],
+                            'resultado' => '',
+                            'fecha' => ''
+                        ];
+                    }
                 }
             }
 
