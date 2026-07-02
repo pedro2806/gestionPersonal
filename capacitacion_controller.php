@@ -217,48 +217,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 break;
             }
 
-            // Obtener departamento y puesto del usuario
-            $query_user = "SELECT u.departamento, p.puesto FROM usuarios u
-                          LEFT JOIN puesto p ON u.puesto = p.id
+            // Obtener departamento del usuario
+            $query_user = "SELECT u.departamento FROM usuarios u
                           WHERE u.noEmpleado = ? LIMIT 1";
             $stmt = $conn_rrhh->prepare($query_user);
             $stmt->bind_param("i", $noEmpleado);
             $stmt->execute();
             $res_user = $stmt->get_result();
 
-            $es_jefe_lab = false;
             $departamento_usuario = 0;
 
             if ($row_user = $res_user->fetch_assoc()) {
                 $departamento_usuario = intval($row_user['departamento']);
-                $puesto_lower = strtolower($row_user['puesto']);
-
-                // Verificar si es Jefe de Laboratorio (puesto 52 o 61)
-                if (strpos($puesto_lower, 'jefe') !== false && strpos($puesto_lower, 'laboratorio') !== false) {
-                    $es_jefe_lab = true;
-                }
             }
 
             $conn_rrhh->close();
 
-            // Si NO es jefe de lab, no mostrar esta sección
-            if (!$es_jefe_lab || $departamento_usuario === 0) {
-                $response = ['status' => 'success', 'es_jefe' => false, 'especialidades' => []];
+            // Mostrar especialidades solo si pertenece a depto 18 o 19
+            if ($departamento_usuario === 0 || !in_array($departamento_usuario, [18, 19])) {
+                $response = ['status' => 'success', 'tiene_acceso' => false, 'especialidades' => []];
                 break;
             }
 
-            // Mapeo de departamentos a cursos de especialidad
-            // Depto 15 = CALIBRACIONES, Depto 16 = DIMENSIONAL
-            // Placeholder: especialidades sin ID mapeado aún = array vacío
+            // Mapeo de departamentos a cursos de especialidad (deptos de producción)
+            // Depto 18 = Lab. Calibraciones, Depto 19 = Laboratorio Dimensional
+            // Placeholder: especialidades sin ID mapeado aún = 0
             $cursos_por_depto = [
-                16 => [6166, 6236, 6269, 5605],      // DIMENSIONAL: Interpretación, Tolerancias, Rugosidad, Calypso
-                15 => [5626, 6340, 0, 0, 0]          // CALIBRACIONES: Incertidumbres I, II + 3 placeholders
+                19 => [6166, 6236, 6269, 5605],      // DIMENSIONAL: Interpretación, Tolerancias, Rugosidad, Calypso
+                18 => [5626, 6340, 0, 0, 0]          // CALIBRACIONES: Incertidumbres I, II + 3 placeholders
             ];
 
             // Nombres de especialidades por departamento (para placeholders)
             $nombres_especialidades = [
-                16 => ['Interpretación de planos', 'Tolerancias geométricas y dimensionales', 'Rugosidad de superficies', 'Calypso Básico'],
-                15 => ['Uso y manejo de máquina unidimensional', 'Calibración de bloques patrón (incluido el cálculo de incertidumbre)', 'Medición en perfilómetro (avanzado)', 'Medición en rugosímetro (avanzado)', 'Evaluación/ Interpretación de la incertidumbre']
+                19 => ['Interpretación de planos', 'Tolerancias geométricas y dimensionales', 'Rugosidad de superficies', 'Calypso Básico'],
+                18 => ['Uso y manejo de máquina unidimensional', 'Calibración de bloques patrón (incluido el cálculo de incertidumbre)', 'Medición en perfilómetro (avanzado)', 'Medición en rugosímetro (avanzado)', 'Evaluación/ Interpretación de la incertidumbre']
             ];
 
             if (!isset($cursos_por_depto[$departamento_usuario])) {
@@ -330,13 +322,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             // Nombre del lab
             $nombres_labs = [
-                16 => 'Especialidades Dimensional',
-                15 => 'Especialidades Calibración'
+                19 => 'Especialidades Dimensional',
+                18 => 'Especialidades Calibración'
             ];
 
             $response = [
                 'status' => 'success',
-                'es_jefe' => true,
+                'tiene_acceso' => true,
                 'nombre_lab' => $nombres_labs[$departamento_usuario] ?? 'Especialidades',
                 'especialidades' => $especialidades
             ];

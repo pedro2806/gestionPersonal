@@ -377,7 +377,7 @@ $id_usuario_sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmplea
                 data: { action: 'obtener_especialidades_laboratorio', correo: correo, noEmpleado: noEmpleado },
                 dataType: 'json',
                 success: function(res) {
-                    if (res.status === 'success' && res.es_jefe) {
+                    if (res.status === 'success' && res.tiene_acceso) {
                         dataEspecialidades = res;
                         $('#titulo_especialidades').text(res.nombre_lab);
                         renderizar_especialidades();
