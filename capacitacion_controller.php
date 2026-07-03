@@ -254,7 +254,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             ];
 
             if (!isset($cursos_por_depto[$departamento_usuario])) {
-                $response = ['status' => 'success', 'es_jefe' => true, 'especialidades' => []];
+                $response = ['status' => 'success', 'tiene_acceso' => true, 'especialidades' => []];
                 break;
             }
 
