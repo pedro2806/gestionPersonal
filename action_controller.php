@@ -547,12 +547,19 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
             $naves = [];
             while($r = mysqli_fetch_assoc($res_naves)) { $naves[] = $r; }
 
+            // 5. Obtener todas las regiones
+            $q_regiones = "SELECT id, region FROM region ORDER BY region ASC";
+            $res_regiones = mysqli_query($conn, $q_regiones);
+            $regiones = [];
+            while($r = mysqli_fetch_assoc($res_regiones)) { $regiones[] = $r; }
+
             $response = [
                 'status' => 'success',
                 'departamentos' => $deptos,
                 'puestos' => $puestos,
                 'jefes' => $jefes,
-                'naves' => $naves
+                'naves' => $naves,
+                'regiones' => $regiones
             ];
             break;
 
@@ -777,7 +784,19 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
 case 'registrar_nuevo_empleado_sistema':
             // Asegurar limpieza absoluta de datos obligatorios y numéricos
             $noEmpleado    = intval($_POST['nuevo_noEmpleado']);
-            $nombre        = mysqli_real_escape_string($conn, $_POST['nuevo_nombre']);
+            // Si el alta proviene de una vacante de SIVAC, viaja el id del candidato
+            // para cerrar el círculo (write-back a mess_sivac). 0 = alta manual.
+            $id_candidato  = isset($_POST['nuevo_id_candidato']) ? intval($_POST['nuevo_id_candidato']) : 0;
+            // El nombre completo se arma con nombres + apellidos (así lo guarda la BD:
+            // columnas separadas + `nombre` como la concatenación). Se acepta el legacy
+            // `nuevo_nombre` por si algún flujo viejo sigue mandando el nombre completo.
+            $nombres_in    = trim($_POST['nuevo_nombres'] ?? '');
+            $apellidos_in  = trim($_POST['nuevo_apellidos'] ?? '');
+            $nombre_full   = trim($nombres_in . ' ' . $apellidos_in);
+            if ($nombre_full === '') { $nombre_full = trim($_POST['nuevo_nombre'] ?? ''); }
+            $nombres       = mysqli_real_escape_string($conn, $nombres_in);
+            $apellidos     = mysqli_real_escape_string($conn, $apellidos_in);
+            $nombre        = mysqli_real_escape_string($conn, $nombre_full);
             $correo        = mysqli_real_escape_string($conn, $_POST['nuevo_correo']);
             $sexo          = mysqli_real_escape_string($conn, $_POST['nuevo_sexo']);
             $fechaIngreso  = mysqli_real_escape_string($conn, $_POST['nuevo_fechaIngreso']);
@@ -790,7 +809,14 @@ case 'registrar_nuevo_empleado_sistema':
             $nss           = mysqli_real_escape_string($conn, trim($_POST['nuevo_nss']));
             $tipoContrato  = mysqli_real_escape_string($conn, $_POST['nuevo_tipoContrato']);
             $tipoSangre    = mysqli_real_escape_string($conn, $_POST['nuevo_tipoSangre'] ?? '');
-            
+
+            $fechaNacimiento = mysqli_real_escape_string($conn, trim($_POST['nuevo_fechaNacimiento'] ?? ''));
+            $fechaNac_sql    = $fechaNacimiento !== '' ? "'$fechaNacimiento'" : "NULL";
+            $nave            = intval($_POST['nuevo_nave'] ?? 0);
+            $nave_sql        = $nave > 0 ? $nave : "NULL";
+            $region          = intval($_POST['nuevo_region'] ?? 0);
+            $region_sql      = $region > 0 ? $region : "NULL";
+
             $foto_default  = "fotos_perfil/undraw_profile.svg";
 
             if ($noEmpleado === 0 || empty($nombre) || empty($correo)) {
@@ -816,10 +842,10 @@ case 'registrar_nuevo_empleado_sistema':
             $password = $user_part;
                 
             // Inserción de usuario
-            $q_insert = "INSERT INTO usuarios 
-                            (noEmpleado, nombre, correo, sexo, fechaIngreso, departamento, puesto, jefe, curp, rfc, nss, tipoContrato, tipoSangre, foto, estatus, usuario, password, password_restaurar, rol) 
-                        VALUES 
-                            ($noEmpleado, '$nombre', '$correo', '$sexo', '$fechaIngreso', $departamento, $puesto, $jefe, '$curp', '$rfc', '$nss', '$tipoContrato', '$tipoSangre', '$foto_default', 1, '$usuario', '$password', '$user_part',1)";
+            $q_insert = "INSERT INTO usuarios
+                            (noEmpleado, nombre, nombres, apellidos, correo, sexo, fechaIngreso, fechaNacimiento, departamento, puesto, jefe, nave, region, curp, rfc, nss, tipoContrato, tipoSangre, foto, estatus, usuario, password, password_restaurar, rol)
+                        VALUES
+                            ($noEmpleado, '$nombre', '$nombres', '$apellidos', '$correo', '$sexo', '$fechaIngreso', $fechaNac_sql, $departamento, $puesto, $jefe, $nave_sql, $region_sql, '$curp', '$rfc', '$nss', '$tipoContrato', '$tipoSangre', '$foto_default', 1, '$usuario', '$password', '$user_part',1)";
 
             if (mysqli_query($conn, $q_insert)) {
     
@@ -832,11 +858,35 @@ case 'registrar_nuevo_empleado_sistema':
                 
                 if (mysqli_query($conn, $q_insert_accesos)) {
                     $response = [
-                        'status' => 'success', 
+                        'status' => 'success',
                         'title' => '¡Excelente!',
                         'message' => '¡Colaborador creado con éxito!',
                         'correo' => $correo
-                    ];  
+                    ];
+
+                    // Cierre del círculo con SIVAC: si el alta vino de una vacante de
+                    // reclutamiento, marcamos la fila como aplicada en mess_sivac y le
+                    // devolvemos el no. de empleado y el correo corporativo que RRHH
+                    // tecleó aquí (SIVAC no los conocía). gestionPersonal es quien
+                    // escribe de vuelta; SIVAC nunca toca mess_rrhh.
+                    if ($id_candidato > 0) {
+                        $q_writeback = "UPDATE mess_sivac.candidatos_datos_alta
+                                        SET alta_aplicada        = 1,
+                                            fecha_alta           = NOW(),
+                                            no_empleado_asignado = '$noEmpleado',
+                                            correo_corporativo   = '$correo'
+                                        WHERE id_candidato = $id_candidato";
+                        if (mysqli_query($conn, $q_writeback)) {
+                            $response['sivac_actualizado'] = true;
+                        } else {
+                            // El colaborador ya existe en mess_rrhh; sólo falló marcar
+                            // SIVAC. Se avisa para que RRHH lo resuelva (la fila seguiría
+                            // apareciendo como pendiente, pero el no. de empleado ya está
+                            // tomado, así que un reintento sería rechazado por duplicado).
+                            $response['sivac_actualizado'] = false;
+                            $response['message'] = '¡Colaborador creado! Pero no se pudo marcar el alta como aplicada en reclutamiento (SIVAC): ' . mysqli_error($conn);
+                        }
+                    }
                 } else {
                     $response = [
                         'status' => 'error',
@@ -848,6 +898,22 @@ case 'registrar_nuevo_empleado_sistema':
 
             } else {
                 $response = ['status' => 'error', 'message' => 'Fallo operativo en la BD: ' . mysqli_error($conn)];
+            }
+            break;
+
+        case 'verificar_no_empleado':
+            // Chequeo en vivo para el form de alta: ¿ya está tomado el noEmpleado?
+            $noEmp = intval($_POST['noEmpleado'] ?? 0);
+            if ($noEmp <= 0) {
+                $response = ['status' => 'success', 'existe' => false];
+                break;
+            }
+            $q_chk = mysqli_query($conn, "SELECT nombre FROM usuarios WHERE noEmpleado = $noEmp LIMIT 1");
+            if ($q_chk && mysqli_num_rows($q_chk) > 0) {
+                $row = mysqli_fetch_assoc($q_chk);
+                $response = ['status' => 'success', 'existe' => true, 'nombre' => $row['nombre']];
+            } else {
+                $response = ['status' => 'success', 'existe' => false];
             }
             break;
 
@@ -892,6 +958,51 @@ case 'registrar_nuevo_empleado_sistema':
             }
 
             $response = ['status' => 'success', 'rol' => $rol, 'empleados' => $empleados];
+            break;
+
+        // ============================================================================
+        // 🔔 ALTAS PENDIENTES DESDE SIVAC (RECLUTAMIENTO)
+        // gestionPersonal jala los datos desde mess_sivac (el usuario MySQL tiene
+        // acceso cross-DB). SIVAC ya marcó listo_para_alta=1 al completar el alta.
+        // ============================================================================
+        case 'listar_altas_pendientes':
+            $sql = "SELECT
+                        cda.id_candidato,
+                        c.nombre                   AS nombres,
+                        c.apellidos                AS apellidos,
+                        TRIM(CONCAT_WS(' ', c.nombre, NULLIF(c.apellidos,''))) AS nombre,
+                        cda.no_empleado_asignado,
+                        cda.correo_corporativo,
+                        cda.curp, cda.rfc, cda.nss, cda.sexo, cda.tipo_sangre, cda.fecha_nacimiento,
+                        ct.fecha_ingreso,
+                        v.departamento             AS id_departamento,
+                        v.id_puesto,
+                        v.no_empleado_solicitante  AS jefe,
+                        c.nave                     AS nave,
+                        COALESCE(c.region, v.region) AS region,
+                        v.tipo                     AS tipo_vacante,
+                        v.folio,
+                        v.puesto                   AS nombre_puesto,
+                        cda.fecha_listo
+                    FROM mess_sivac.candidatos_datos_alta cda
+                    INNER JOIN mess_sivac.candidatos     c  ON c.id  = cda.id_candidato
+                    INNER JOIN mess_sivac.vacantes       v  ON v.id  = c.id_vacante
+                    LEFT  JOIN mess_sivac.contrataciones ct ON ct.id_candidato = c.id
+                    WHERE cda.listo_para_alta = 1 AND cda.alta_aplicada = 0
+                    ORDER BY cda.fecha_listo ASC";
+            $res = mysqli_query($conn, $sql);
+            if (!$res) {
+                $response = ['status' => 'error', 'message' => 'No se pudieron leer las altas pendientes de SIVAC: ' . mysqli_error($conn)];
+                break;
+            }
+            // vacantes.tipo (mess_sivac) -> usuarios.tipoContrato (mess_rrhh)
+            $mapa_contrato = ['permanente' => 'PLANTA', 'temporal' => 'TEMPORAL', 'practicas' => 'PRACTICAS'];
+            $data = [];
+            while ($row = mysqli_fetch_assoc($res)) {
+                $row['tipoContrato'] = $mapa_contrato[$row['tipo_vacante']] ?? '';
+                $data[] = $row;
+            }
+            $response = ['status' => 'success', 'data' => $data, 'total' => count($data)];
             break;
 
 
