@@ -3,6 +3,11 @@ let catalogos_documentos_cache = [];
 let cache_jefes_html = '';
 let cache_deptos_html = '';
 let cache_jefes_admin_html = ''; // <- NUEVO: Almacena la lista de líderes para el alta
+let cache_naves_html = '';       // <- NUEVO: Naves para el alta
+let cache_regiones_html = '';    // <- NUEVO: Regiones para el alta
+let cache_altas_pendientes = []; // <- NUEVO: Altas provenientes de SIVAC (reclutamiento)
+let no_empleado_duplicado = false; // <- NUEVO: bandera del chequeo en vivo del No. de empleado
+let _timer_chk_no_empleado = null;
 
 // Inicia document.ready
 $(document).ready(function() {
@@ -16,7 +21,8 @@ $(document).ready(function() {
         obtener_perfil_tarjeta_maestra(id_usuario_sesion);
     } else if (contexto === 'Administracion') {
         cargar_tabla_administracion_docs();
-        
+        cargar_altas_pendientes(); // Altas provenientes de SIVAC (reclutamiento)
+
         /*$('#form_registrar_nuevo_empleado').on('submit', function(e) {
             e.preventDefault();
             guardar_nuevo_empleado_sistema();
@@ -411,9 +417,15 @@ function preparar_selects_catalogos_usuario() {
                 let html_nave = '<option value="0">-- Sin Nave</option>';
                 res.naves.forEach(function(n) { html_nave += `<option value="${n.idNave}">${n.nave}</option>`; });
                 $('#mod_nave').html(html_nave);
-                
+
                 // GUARDAMOS EN CACHÉ: Toda la lista de líderes para alimentar el alta completo
                 cache_jefes_admin_html = html_jef;
+
+                // Naves y regiones para el form de alta (valor vacío = NULL en BD)
+                cache_naves_html = '<option value="">-- Sin Nave --</option>';
+                res.naves.forEach(function(n) { cache_naves_html += `<option value="${n.idNave}">${n.nave}</option>`; });
+                cache_regiones_html = '<option value="">-- Sin Región --</option>';
+                (res.regiones || []).forEach(function(r) { cache_regiones_html += `<option value="${r.id}">${r.region}</option>`; });
             }
         }
     });
@@ -653,19 +665,199 @@ function agregar_campo_telefono() { $('#contenedor_telefonos').append(render_fil
 // 🆕 NUEVAS FUNCIONES: ALTA DE EMPLEADOS COMPLETA CON CATÁLOGOS INTEGRADOS
 // ============================================================================
 
-function abrir_modal_nuevo_empleado() {
+// Deja el formulario de alta limpio y con los catálogos (depto/puesto/jefe) cargados.
+// Lo usan tanto el alta manual como el alta precargada desde SIVAC.
+function preparar_form_nuevo_empleado() {
     $('#form_registrar_nuevo_empleado')[0].reset();
-    
-    obtener_ultimo_no_empleado();
+    $('#nuevo_id_candidato').val('');
+    $('#banner_origen_sivac').addClass('d-none');
+
+    // Limpia el estado del chequeo de No. de empleado
+    no_empleado_duplicado = false;
+    $('#nuevo_noEmpleado').removeClass('is-invalid is-valid');
+    $('#feedback_no_empleado').text('').removeClass('text-danger text-success');
+    actualizar_estado_boton_guardar();
+
     // Inyectamos de forma cruzada toda la matriz de catálogos maestros que ya tenemos en memoria
     $('#select_nuevo_puesto').html(cache_jefes_html || '<option value="">No se encontraron puestos activos</option>');
     $('#select_nuevo_departamento').html(cache_deptos_html || '<option value="">No se encontraron departamentos activos</option>');
     $('#select_nuevo_jefe').html(cache_jefes_admin_html || '<option value="0">-- Sin Jefe Asignado --</option>');
-    
+    $('#select_nuevo_nave').html(cache_naves_html || '<option value="">-- Sin Nave --</option>');
+    $('#select_nuevo_region').html(cache_regiones_html || '<option value="">-- Sin Región --</option>');
+}
+
+function abrir_modal_nuevo_empleado() {
+    preparar_form_nuevo_empleado();
+    obtener_ultimo_no_empleado();
+    $('#modal_nuevo_empleado').modal('show');
+}
+
+// ── Validación en vivo del No. de empleado (no permitir duplicados) ──────────
+// Al teclear o precargar el número, se consulta si ya está asignado; si lo está,
+// se marca en rojo y se bloquea "Guardar Registro". El servidor igual lo valida.
+$(document).on('input', '#nuevo_noEmpleado', function() {
+    verificar_disponibilidad_no_empleado();
+});
+
+function verificar_disponibilidad_no_empleado() {
+    let val = parseInt($('#nuevo_noEmpleado').val()) || 0;
+    let $inp = $('#nuevo_noEmpleado');
+    let $fb  = $('#feedback_no_empleado');
+
+    clearTimeout(_timer_chk_no_empleado);
+
+    if (val <= 0) {
+        no_empleado_duplicado = false;
+        $inp.removeClass('is-invalid is-valid');
+        $fb.text('').removeClass('text-danger text-success');
+        actualizar_estado_boton_guardar();
+        return;
+    }
+
+    _timer_chk_no_empleado = setTimeout(function() {
+        $.ajax({
+            url: 'action_controller.php',
+            type: 'POST',
+            data: { action: 'verificar_no_empleado', noEmpleado: val },
+            dataType: 'json',
+            success: function(res) {
+                // Ignora respuestas viejas si el valor ya cambió
+                if ((parseInt($('#nuevo_noEmpleado').val()) || 0) !== val) return;
+                if (res.status === 'success' && res.existe) {
+                    no_empleado_duplicado = true;
+                    $inp.addClass('is-invalid').removeClass('is-valid');
+                    $fb.removeClass('text-success').addClass('text-danger')
+                       .html('<i class="fas fa-times-circle me-1"></i>Ya asignado a ' + (res.nombre || 'otro colaborador'));
+                } else {
+                    no_empleado_duplicado = false;
+                    $inp.addClass('is-valid').removeClass('is-invalid');
+                    $fb.removeClass('text-danger').addClass('text-success')
+                       .html('<i class="fas fa-check-circle me-1"></i>Disponible');
+                }
+                actualizar_estado_boton_guardar();
+            }
+        });
+    }, 350);
+}
+
+function actualizar_estado_boton_guardar() {
+    $('#btn_guardar_nuevo_empleado').prop('disabled', no_empleado_duplicado);
+}
+
+// ============================================================================
+// 🔔 ALTAS PENDIENTES DESDE SIVAC (RECLUTAMIENTO)
+// ============================================================================
+
+function cargar_altas_pendientes() {
+    $.ajax({
+        url: 'action_controller.php',
+        type: 'POST',
+        data: { action: 'listar_altas_pendientes' },
+        dataType: 'json',
+        success: function(res) {
+            if (res.status !== 'success') { return; }
+            cache_altas_pendientes = res.data || [];
+            let total = res.total || cache_altas_pendientes.length;
+
+            // Banner de aviso
+            $('#altas_pendientes_count').text(total);
+            if (total > 0) { $('#alerta_altas_pendientes').removeClass('d-none').addClass('d-flex'); }
+            else { $('#alerta_altas_pendientes').addClass('d-none').removeClass('d-flex'); }
+
+            // Tabla del modal
+            let html = '';
+            cache_altas_pendientes.forEach(function(a) {
+                let nombre  = a.nombre || '(sin nombre)';
+                let ingreso = a.fecha_ingreso ? a.fecha_ingreso : '<span class="text-muted">Por definir</span>';
+                let listo   = a.fecha_listo ? a.fecha_listo.substring(0, 10) : '';
+                html += `<tr>
+                    <td class="ps-3 font-weight-bold text-dark">${nombre}</td>
+                    <td>${a.nombre_puesto || ''}<br><span class="small text-muted">${a.folio || ''}</span></td>
+                    <td>${ingreso}</td>
+                    <td class="small text-muted">${listo}</td>
+                    <td class="text-center pe-3">
+                        <button class="btn btn-sm btn-dark fw-bold shadow-none" onclick="procesar_alta_pendiente(${a.id_candidato})">
+                            <i class="fas fa-user-plus me-1"></i> Procesar
+                        </button>
+                    </td>
+                </tr>`;
+            });
+            if (html === '') { html = '<tr><td colspan="5" class="text-center text-muted py-4">No hay altas pendientes.</td></tr>'; }
+            $('#tbody_altas_pendientes').html(html);
+        },
+        error: function(xhr) {
+            console.error('No se pudieron cargar las altas pendientes de SIVAC: ', xhr.responseText);
+        }
+    });
+}
+
+function abrir_modal_altas_pendientes() {
+    $('#modal_altas_pendientes').modal('show');
+}
+
+// El portal de SIVAC guarda el tipo de sangre como 'O+', 'A-', 'AB+' (su validación),
+// pero el <select> de esta alta usa 'ORH+', 'ARH-', 'ABRH+'. Insertamos el 'RH' para
+// que el .val() case la opción. Si ya viene en formato ORH+, se respeta.
+function normalizar_tipo_sangre(v) {
+    if (!v) return '';
+    v = String(v).toUpperCase().replace(/\s+/g, '');
+    let m = v.match(/^(A|B|AB|O)(?:RH)?([+-])$/);
+    return m ? (m[1] + 'RH' + m[2]) : v;
+}
+
+// Precarga el formulario de alta con los datos que SIVAC dejó servidos para el
+// candidato. RRHH sólo confirma No. de empleado y correo corporativo (los que
+// SIVAC no puede saber) y guarda.
+function procesar_alta_pendiente(id_candidato) {
+    let a = cache_altas_pendientes.find(x => String(x.id_candidato) === String(id_candidato));
+    if (!a) { Swal.fire('Error', 'No se encontró la información del candidato.', 'error'); return; }
+
+    preparar_form_nuevo_empleado();
+
+    let $form = $('#form_registrar_nuevo_empleado');
+    $('#nuevo_id_candidato').val(a.id_candidato);
+
+    // Origen visible para el usuario
+    $('#banner_origen_sivac_folio').text(a.folio || ('#' + a.id_candidato));
+    $('#banner_origen_sivac').removeClass('d-none');
+
+    // Datos de identidad y laborales (los que SIVAC sí conoce). En la BD, nombres y
+    // apellidos van separados y `nombre` es la concatenación (la arma el servidor).
+    $form.find('[name="nuevo_nombres"]').val(a.nombres || '');
+    $form.find('[name="nuevo_apellidos"]').val(a.apellidos || '');
+    $form.find('[name="nuevo_curp"]').val(a.curp || '');
+    $form.find('[name="nuevo_rfc"]').val(a.rfc || '');
+    $form.find('[name="nuevo_nss"]').val(a.nss || '');
+    if (a.sexo)            { $form.find('[name="nuevo_sexo"]').val(a.sexo); }
+    if (a.tipo_sangre)     { $form.find('[name="nuevo_tipoSangre"]').val(normalizar_tipo_sangre(a.tipo_sangre)); }
+    if (a.tipoContrato)    { $form.find('[name="nuevo_tipoContrato"]').val(a.tipoContrato); }
+    if (a.fecha_ingreso)   { $form.find('[name="nuevo_fechaIngreso"]').val(a.fecha_ingreso); }
+    if (a.fecha_nacimiento){ $form.find('[name="nuevo_fechaNacimiento"]').val(a.fecha_nacimiento); }
+
+    // Catálogos: los IDs de SIVAC son los mismos de mess_rrhh, el .val() casa la opción
+    $('#select_nuevo_departamento').val(a.id_departamento || '');
+    $('#select_nuevo_puesto').val(a.id_puesto || '');
+    $('#select_nuevo_jefe').val(a.jefe || '0');
+    $('#select_nuevo_nave').val(a.nave || '');
+    $('#select_nuevo_region').val(a.region || '');
+
+    // No. de empleado y correo: los decide RRHH aquí. Si SIVAC ya traía algo, se
+    // respeta; si no, se sugiere el siguiente consecutivo.
+    if (a.correo_corporativo) { $form.find('[name="nuevo_correo"]').val(a.correo_corporativo); }
+    if (a.no_empleado_asignado) { $('#nuevo_noEmpleado').val(a.no_empleado_asignado); verificar_disponibilidad_no_empleado(); }
+    else { obtener_ultimo_no_empleado(); }
+
+    $('#modal_altas_pendientes').modal('hide');
     $('#modal_nuevo_empleado').modal('show');
 }
 
 function guardar_nuevo_empleado_sistema() {
+    // Guarda frontend: no permitir guardar si el No. de empleado ya está asignado.
+    if (no_empleado_duplicado) {
+        Swal.fire('Número en uso', 'Ese número de empleado ya está asignado. Cámbialo antes de guardar.', 'warning');
+        return;
+    }
+
     // 1. Serializamos los datos del formulario
     let formData = $('#form_registrar_nuevo_empleado').serialize();
     formData += '&action=registrar_nuevo_empleado_sistema';
@@ -687,6 +879,7 @@ function guardar_nuevo_empleado_sistema() {
                 Swal.fire({ icon: 'success', title: '¡Guardado!', text: res.message, timer: 1500, showConfirmButton: false });
                 $('#modal_nuevo_empleado').modal('hide');
                 cargar_tabla_administracion_docs();
+                cargar_altas_pendientes(); // refresca el banner tras el write-back a SIVAC
                 
                 // 3. Segunda petición (Silenciosa): Enviar correo de bienvenida
                 if (res.correo) {
@@ -747,6 +940,7 @@ function obtener_ultimo_no_empleado() {
         success: function(res) {
             if (res.status === 'success') {
                 $('#nuevo_noEmpleado').val(res.ultimo_no_empleado + 1);
+                verificar_disponibilidad_no_empleado();
             } else {
                 Swal.fire('Error', res.message, 'error');
             }

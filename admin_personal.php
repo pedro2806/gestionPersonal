@@ -51,6 +51,20 @@ require_once 'conn.php';
                                 </button>
                             </div>
 
+                            <!-- 🔔 ALERTA: altas pendientes provenientes de SIVAC (reclutamiento) -->
+                            <div id="alerta_altas_pendientes" class="alert alert-warning border-0 shadow-sm d-none justify-content-between align-items-center mb-3" role="alert">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-user-clock fa-lg me-3 text-warning"></i>
+                                    <div>
+                                        <strong class="d-block text-dark">Altas pendientes desde reclutamiento (SIVAC)</strong>
+                                        <span class="small text-muted">Hay <span id="altas_pendientes_count" class="fw-bold">0</span> candidato(s) contratado(s) listos para darse de alta en el sistema.</span>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-warning fw-bold text-uppercase px-3 shadow-none" onclick="abrir_modal_altas_pendientes()">
+                                    <i class="fas fa-inbox me-1"></i> Revisar
+                                </button>
+                            </div>
+
                             <div class="table-responsive">
                                 <table id="tabla_admin_personal" class="table table-hover align-middle bg-white rounded-3 overflow-hidden shadow-sm small text-secondary" width="100%">
                                     <thead class="table-light text-uppercase text-muted border-bottom" style="font-size: 0.72rem; letter-spacing: 0.03em;">
@@ -87,15 +101,27 @@ require_once 'conn.php';
                             <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <form id="form_registrar_nuevo_empleado">
+                            <!-- Si el alta proviene de una vacante de SIVAC, aquí viaja el id del candidato
+                                 para el write-back a mess_sivac. Vacío = alta manual. -->
+                            <input type="hidden" name="nuevo_id_candidato" id="nuevo_id_candidato" value="">
                             <div class="modal-body p-4">
+                                <div id="banner_origen_sivac" class="alert alert-info border-0 py-2 px-3 small d-none mb-3">
+                                    <i class="fas fa-inbox me-1"></i> Alta precargada desde reclutamiento (SIVAC) &mdash; candidato
+                                    <strong id="banner_origen_sivac_folio"></strong>. Verifica el No. de empleado y el correo corporativo antes de guardar.
+                                </div>
                                 <div class="row g-3">
                                     <div class="col-md-3">
                                         <label class="small text-muted font-weight-bold mb-1">No. Empleado</label>
                                         <input type="number" class="form-control shadow-none" name="nuevo_noEmpleado"  id="nuevo_noEmpleado" required placeholder="Ej: 276">
+                                        <small id="feedback_no_empleado" class="d-block mt-1" style="font-size:.72rem;"></small>
                                     </div>
-                                    <div class="col-md-9">
-                                        <label class="small text-muted font-weight-bold mb-1">Nombre Completo</label>
-                                        <input type="text" class="form-control shadow-none" name="nuevo_nombre" required placeholder="Nombre(s) y Apellidos">
+                                    <div class="col-md-5">
+                                        <label class="small text-muted font-weight-bold mb-1">Nombre(s)</label>
+                                        <input type="text" class="form-control shadow-none" name="nuevo_nombres" id="nuevo_nombres" required placeholder="Nombre(s)">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="small text-muted font-weight-bold mb-1">Apellidos</label>
+                                        <input type="text" class="form-control shadow-none" name="nuevo_apellidos" id="nuevo_apellidos" required placeholder="Apellidos">
                                     </div>
                                     <div class="col-md-6">
                                         <label class="small text-muted font-weight-bold mb-1">Correo Electrónico</label>
@@ -126,6 +152,18 @@ require_once 'conn.php';
                                         <select class="form-select shadow-none" name="nuevo_jefe" id="select_nuevo_jefe" required></select>
                                     </div>
                                     <div class="col-md-4">
+                                        <label class="small text-muted font-weight-bold mb-1">Fecha de Nacimiento</label>
+                                        <input type="date" class="form-control shadow-none" name="nuevo_fechaNacimiento" id="nuevo_fechaNacimiento">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="small text-muted font-weight-bold mb-1">Nave</label>
+                                        <select class="form-select shadow-none" name="nuevo_nave" id="select_nuevo_nave"></select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="small text-muted font-weight-bold mb-1">Región</label>
+                                        <select class="form-select shadow-none" name="nuevo_region" id="select_nuevo_region"></select>
+                                    </div>
+                                    <div class="col-md-4">
                                         <label class="small text-muted font-weight-bold mb-1">CURP</label>
                                         <input type="text" class="form-control text-uppercase shadow-none" name="nuevo_curp" maxlength="18" placeholder="18 caracteres">
                                     </div>
@@ -141,6 +179,8 @@ require_once 'conn.php';
                                         <label class="small text-muted font-weight-bold mb-1">Tipo de Contrato</label>
                                         <select class="form-select shadow-none" name="nuevo_tipoContrato" required>
                                             <option value="PLANTA">PLANTA</option>
+                                            <option value="TEMPORAL">TEMPORAL</option>
+                                            <option value="PRACTICAS">PRACTICAS</option>
                                             <option value="CONTRATO">CONTRATO</option>
                                         </select>
                                     </div>
@@ -162,9 +202,43 @@ require_once 'conn.php';
                             </div>
                             <div class="modal-footer bg-light">
                                 <button type="button" class="btn btn-sm btn-secondary font-weight-bold" data-bs-dismiss="modal">Cancelar</button>
-                                <button type="button" onclick="guardar_nuevo_empleado_sistema()" class="btn btn-sm btn-dark font-weight-bold px-4 shadow-none">Guardar Registro</button>
+                                <button type="button" id="btn_guardar_nuevo_empleado" onclick="guardar_nuevo_empleado_sistema()" class="btn btn-sm btn-dark font-weight-bold px-4 shadow-none">Guardar Registro</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================================ -->
+            <!-- 🔔 ALTAS PENDIENTES DESDE SIVAC (RECLUTAMIENTO)                              -->
+            <!-- ============================================================================ -->
+            <div class="modal fade" id="modal_altas_pendientes" tabindex="-1" aria-labelledby="modal_altas_pendientesLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content border-0 shadow-lg">
+                        <div class="modal-header bg-light">
+                            <h5 class="modal-title font-weight-bold text-dark" id="modal_altas_pendientesLabel"><i class="fas fa-user-clock text-warning mr-2"></i> Altas pendientes desde reclutamiento</h5>
+                            <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <p class="small text-muted mb-3">Candidatos que RRHH ya contrató en SIVAC. Al procesar un alta, el formulario se precarga con los datos que capturó reclutamiento; sólo faltará confirmar el No. de empleado y el correo corporativo.</p>
+                            <div class="table-responsive border rounded-3">
+                                <table class="table table-hover align-middle mb-0 small text-secondary">
+                                    <thead class="table-light text-uppercase text-muted" style="font-size: 0.72rem; letter-spacing: 0.03em;">
+                                        <tr>
+                                            <th class="py-2 ps-3">Candidato</th>
+                                            <th class="py-2">Puesto / Vacante</th>
+                                            <th class="py-2">Ingreso</th>
+                                            <th class="py-2">Listo desde</th>
+                                            <th class="py-2 text-center pe-3" style="width: 130px;">Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbody_altas_pendientes"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light">
+                            <button type="button" class="btn btn-sm btn-secondary font-weight-bold" data-bs-dismiss="modal">Cerrar</button>
+                        </div>
                     </div>
                 </div>
             </div>
