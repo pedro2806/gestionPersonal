@@ -1,4 +1,5 @@
 /.claude
 /uploads
 conn.php
+conexion.php
 uploads/expedientes/*
