@@ -7,6 +7,23 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// Gate de sesión activa para las mutaciones de personal de admin_personal.php.
+// Modelo elegido por ahora: solo sesión activa, es decir, cualquier empleado
+// activo logueado puede editar a otro colaborador. El Acceso Especial
+// adminPersonal queda como paso futuro.
+// Identidad de sesión: cookie noEmpleadoGP, mismo precedente que ya usan
+// actualizar_foto_usuario y listar_empleados_filtro_cursos en este archivo.
+// Devuelve el noEmpleado de la sesión si está activa, o 0 si no hay sesión
+// o el empleado no existe / está inactivo (estatus != 1).
+function sesion_activa_personal($conn) {
+    $sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmpleadoGP']) : 0;
+    if ($sesion <= 0) {
+        return 0;
+    }
+    $res = mysqli_query($conn, "SELECT noEmpleado FROM usuarios WHERE noEmpleado = $sesion AND estatus = 1 LIMIT 1");
+    return ($res && mysqli_num_rows($res) > 0) ? $sesion : 0;
+}
+
 $action = isset($_POST['action']) ? trim($_POST['action']) : '';    
 
     switch ($action) {
@@ -469,6 +486,10 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
         
         // 2. Procesar la actualización/modificación de los datos
         case 'modificar_usuario_sistema':
+            if (sesion_activa_personal($conn) <= 0) {
+                $response = ['status' => 'error', 'message' => 'Sesión no válida o inactiva. Inicia sesión de nuevo para continuar.'];
+                break;
+            }
             $noEmpleado = intval($_POST['mod_noEmpleado'] ?? 0);
             if ($noEmpleado <= 0) {
                 $response = ['status' => 'error', 'message' => 'Empleado inválido.'];
@@ -604,6 +625,10 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
         
             // 3. BAJA LÓGICA: Cambiar estatus a 0 de forma segura
         case 'baja_logica_usuario':
+            if (sesion_activa_personal($conn) <= 0) {
+                $response = ['status' => 'error', 'message' => 'Sesión no válida o inactiva. Inicia sesión de nuevo para continuar.'];
+                break;
+            }
             $noEmpleado = intval($_POST['noEmpleado']);
             
             // Cambiamos estatus a 0 (Inactivo) conservando la integridad referencial de los documentos
@@ -618,6 +643,10 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
 
         // Reactivación: espejo de la baja lógica, cambia estatus a 1 (Activo).
         case 'reactivar_usuario':
+            if (sesion_activa_personal($conn) <= 0) {
+                $response = ['status' => 'error', 'message' => 'Sesión no válida o inactiva. Inicia sesión de nuevo para continuar.'];
+                break;
+            }
             $noEmpleado = intval($_POST['noEmpleado']);
 
             $query = "UPDATE usuarios SET estatus = 1 WHERE noEmpleado = $noEmpleado";
@@ -889,6 +918,10 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
         // 🆕 CASO ADICIONAL: ALTA COMPLETA DE COLABORADORES EN EL EXPEDIENTE
         // ============================================================================
 case 'registrar_nuevo_empleado_sistema':
+            if (sesion_activa_personal($conn) <= 0) {
+                $response = ['status' => 'error', 'message' => 'Sesión no válida o inactiva. Inicia sesión de nuevo para continuar.'];
+                break;
+            }
             // Asegurar limpieza absoluta de datos obligatorios y numéricos
             $noEmpleado    = intval($_POST['nuevo_noEmpleado']);
             // Si el alta proviene de una vacante de SIVAC, viaja el id del candidato
