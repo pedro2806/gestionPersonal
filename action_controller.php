@@ -7,6 +7,23 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// Gate de sesión activa para las mutaciones de personal de admin_personal.php.
+// Modelo elegido por ahora: solo sesión activa, es decir, cualquier empleado
+// activo logueado puede editar a otro colaborador. El Acceso Especial
+// adminPersonal queda como paso futuro.
+// Identidad de sesión: cookie noEmpleadoGP, mismo precedente que ya usan
+// actualizar_foto_usuario y listar_empleados_filtro_cursos en este archivo.
+// Devuelve el noEmpleado de la sesión si está activa, o 0 si no hay sesión
+// o el empleado no existe / está inactivo (estatus != 1).
+function sesion_activa_personal($conn) {
+    $sesion = isset($_COOKIE['noEmpleadoGP']) ? intval($_COOKIE['noEmpleadoGP']) : 0;
+    if ($sesion <= 0) {
+        return 0;
+    }
+    $res = mysqli_query($conn, "SELECT noEmpleado FROM usuarios WHERE noEmpleado = $sesion AND estatus = 1 LIMIT 1");
+    return ($res && mysqli_num_rows($res) > 0) ? $sesion : 0;
+}
+
 $action = isset($_POST['action']) ? trim($_POST['action']) : '';    
 
     switch ($action) {
@@ -457,7 +474,7 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
         // 1. Obtener los datos completos de un usuario para cargar el formulario de edición
         case 'obtener_datos_usuario_edicion':
             $noEmpleado = intval($_POST['noEmpleado']);
-            $query = "SELECT noEmpleado, nombre, correo, departamento, puesto, jefe, tipoContrato, sexo, nss, rfc, curp, tipoSangre, fechaIngreso, foto, nave FROM usuarios WHERE noEmpleado = $noEmpleado";
+            $query = "SELECT noEmpleado, nombre, nombres, apellidos, correo, departamento, puesto, jefe, tipoContrato, sexo, nss, rfc, curp, tipoSangre, fechaIngreso, fechaNacimiento, region, foto, nave FROM usuarios WHERE noEmpleado = $noEmpleado";
             $res = mysqli_query($conn, $query);
             if ($res && mysqli_num_rows($res) > 0) {
                 $response = ['status' => 'success', 'data' => mysqli_fetch_assoc($res)];
@@ -469,24 +486,120 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
         
         // 2. Procesar la actualización/modificación de los datos
         case 'modificar_usuario_sistema':
-            $noEmpleado = intval($_POST['mod_noEmpleado']);
-            $nombre = mysqli_real_escape_string($conn, $_POST['mod_nombre']);
-            $correo = mysqli_real_escape_string($conn, $_POST['mod_correo']);
-            $departamento = intval($_POST['mod_departamento']);
-            $puesto = intval($_POST['mod_puesto']);
-            $jefe = intval($_POST['mod_jefe']);
-            $tipoContrato = mysqli_real_escape_string($conn, $_POST['mod_tipoContrato']);
-            $sexo = mysqli_real_escape_string($conn, $_POST['mod_sexo']);
-            $nss = mysqli_real_escape_string($conn, $_POST['mod_nss']);
-            $rfc = mysqli_real_escape_string($conn, $_POST['mod_rfc']);
-            $curp = mysqli_real_escape_string($conn, $_POST['mod_curp']);
-            $tipoSangre = mysqli_real_escape_string($conn, $_POST['mod_tipoSangre']);
-            $fechaIngreso = mysqli_real_escape_string($conn, $_POST['mod_fechaIngreso']);
-            $nave = mysqli_real_escape_string($conn, $_POST['mod_nave']);
+            if (sesion_activa_personal($conn) <= 0) {
+                $response = ['status' => 'error', 'message' => 'Sesión no válida o inactiva. Inicia sesión de nuevo para continuar.'];
+                break;
+            }
+            $noEmpleado = intval($_POST['mod_noEmpleado'] ?? 0);
+            if ($noEmpleado <= 0) {
+                $response = ['status' => 'error', 'message' => 'Empleado inválido.'];
+                break;
+            }
+            // El nombre completo se deriva de nombres + apellidos, mismo criterio
+            // que el alta en registrar_nuevo_empleado_sistema.
+            $nombres_in    = trim($_POST['mod_nombres'] ?? '');
+            $apellidos_in  = trim($_POST['mod_apellidos'] ?? '');
+            $nombre_full   = trim($nombres_in . ' ' . $apellidos_in);
+            $correo        = trim($_POST['mod_correo'] ?? '');
+            $departamento  = intval($_POST['mod_departamento'] ?? 0);
+            $puesto        = intval($_POST['mod_puesto'] ?? 0);
+            $jefe          = intval($_POST['mod_jefe'] ?? 0);
+            $tipoContrato  = trim($_POST['mod_tipoContrato'] ?? '');
+            $sexo          = trim($_POST['mod_sexo'] ?? '');
+            $nss           = trim($_POST['mod_nss'] ?? '');
+            $rfc           = strtoupper(trim($_POST['mod_rfc'] ?? ''));
+            $curp          = strtoupper(trim($_POST['mod_curp'] ?? ''));
+            $tipoSangre    = trim($_POST['mod_tipoSangre'] ?? '');
+            $fechaIngreso  = trim($_POST['mod_fechaIngreso'] ?? '');
+            $fechaNacimiento = trim($_POST['mod_fechaNacimiento'] ?? '');
+            $nave          = intval($_POST['mod_nave'] ?? 0);
+            $nave_sql      = $nave > 0 ? $nave : "NULL";
+            $region        = intval($_POST['mod_region'] ?? 0);
+            $region_sql    = $region > 0 ? $region : "NULL";
+
+            // Validación de fecha YYYY-MM-DD real (sin día 30 de febrero, etc.)
+            $es_fecha_valida = function($f) {
+                $p = explode('-', $f);
+                return count($p) === 3 && strlen($p[0]) === 4
+                    && ctype_digit($p[0]) && ctype_digit($p[1]) && ctype_digit($p[2])
+                    && checkdate((int)$p[1], (int)$p[2], (int)$p[0]);
+            };
+
+            if ($nombre_full === '') {
+                $response = ['status' => 'error', 'message' => 'El nombre es obligatorio.'];
+                break;
+            }
+            if ($correo === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+                $response = ['status' => 'error', 'message' => 'El correo electrónico no es válido.'];
+                break;
+            }
+            if ($departamento <= 0) {
+                $response = ['status' => 'error', 'message' => 'Selecciona un departamento válido.'];
+                break;
+            }
+            if ($puesto <= 0) {
+                $response = ['status' => 'error', 'message' => 'Selecciona un puesto válido.'];
+                break;
+            }
+            if ($jefe < 0) {
+                $response = ['status' => 'error', 'message' => 'El jefe asignado no es válido.'];
+                break;
+            }
+            if ($curp !== '' && strlen($curp) !== 18) {
+                $response = ['status' => 'error', 'message' => 'La CURP debe tener 18 caracteres.'];
+                break;
+            }
+            if ($rfc !== '' && strlen($rfc) !== 13) {
+                $response = ['status' => 'error', 'message' => 'El RFC debe tener 13 caracteres.'];
+                break;
+            }
+            if ($nss !== '' && !preg_match('/^[0-9-]{11,12}$/', $nss)) {
+                $response = ['status' => 'error', 'message' => 'El NSS debe tener 11 o 12 caracteres (dígitos y guion).'];
+                break;
+            }
+            if (!$es_fecha_valida($fechaIngreso)) {
+                $response = ['status' => 'error', 'message' => 'La fecha de ingreso no es válida.'];
+                break;
+            }
+            if ($fechaNacimiento !== '' && !$es_fecha_valida($fechaNacimiento)) {
+                $response = ['status' => 'error', 'message' => 'La fecha de nacimiento no es válida.'];
+                break;
+            }
+            if ($tipoContrato !== '' && !in_array($tipoContrato, ['PLANTA', 'TEMPORAL', 'PRACTICAS', 'CONTRATO'], true)) {
+                $response = ['status' => 'error', 'message' => 'El tipo de contrato no es válido.'];
+                break;
+            }
+            if ($tipoSangre !== '' && !in_array($tipoSangre, ['ARH+', 'ARH-', 'BRH+', 'BRH-', 'ABRH+', 'ABRH-', 'ORH+', 'ORH-'], true)) {
+                $response = ['status' => 'error', 'message' => 'El tipo de sangre no es válido.'];
+                break;
+            }
+
+            // El correo también es el usuario de acceso: no puede pertenecer a otro colaborador.
+            $correo_sql = mysqli_real_escape_string($conn, $correo);
+            $q_dup = mysqli_query($conn, "SELECT noEmpleado FROM usuarios WHERE correo = '$correo_sql' AND noEmpleado <> $noEmpleado LIMIT 1");
+            if ($q_dup && mysqli_num_rows($q_dup) > 0) {
+                $response = ['status' => 'error', 'message' => 'El correo ya está asignado a otro colaborador.'];
+                break;
+            }
+
+            $nombres       = mysqli_real_escape_string($conn, $nombres_in);
+            $apellidos     = mysqli_real_escape_string($conn, $apellidos_in);
+            $nombre        = mysqli_real_escape_string($conn, $nombre_full);
+            $tipoContrato  = mysqli_real_escape_string($conn, $tipoContrato);
+            $sexo          = mysqli_real_escape_string($conn, $sexo);
+            $nss           = mysqli_real_escape_string($conn, $nss);
+            $rfc           = mysqli_real_escape_string($conn, $rfc);
+            $curp          = mysqli_real_escape_string($conn, $curp);
+            $tipoSangre    = mysqli_real_escape_string($conn, $tipoSangre);
+            $fechaIngreso  = mysqli_real_escape_string($conn, $fechaIngreso);
+            $fechaNac_sql  = $fechaNacimiento !== '' ? "'" . mysqli_real_escape_string($conn, $fechaNacimiento) . "'" : "NULL";
 
             $query = "UPDATE usuarios SET
                         nombre = '$nombre',
-                        correo = '$correo',
+                        nombres = '$nombres',
+                        apellidos = '$apellidos',
+                        correo = '$correo_sql',
+                        usuario = '$correo_sql',
                         departamento = $departamento,
                         puesto = $puesto,
                         jefe = $jefe,
@@ -497,7 +610,9 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
                         curp = '$curp',
                         tipoSangre = '$tipoSangre',
                         fechaIngreso = '$fechaIngreso',
-                        nave = '$nave'
+                        fechaNacimiento = $fechaNac_sql,
+                        nave = $nave_sql,
+                        region = $region_sql
                         WHERE noEmpleado = $noEmpleado";
 
             if (mysqli_query($conn, $query)) {
@@ -510,6 +625,10 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
         
             // 3. BAJA LÓGICA: Cambiar estatus a 0 de forma segura
         case 'baja_logica_usuario':
+            if (sesion_activa_personal($conn) <= 0) {
+                $response = ['status' => 'error', 'message' => 'Sesión no válida o inactiva. Inicia sesión de nuevo para continuar.'];
+                break;
+            }
             $noEmpleado = intval($_POST['noEmpleado']);
             
             // Cambiamos estatus a 0 (Inactivo) conservando la integridad referencial de los documentos
@@ -519,6 +638,23 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
                 $response = ['status' => 'success', 'message' => 'Colaborador desactivado correctamente en el sistema.'];
             } else {
                 $response = ['status' => 'error', 'message' => 'Error al procesar la baja: ' . mysqli_error($conn)];
+            }
+            break;
+
+        // Reactivación: espejo de la baja lógica, cambia estatus a 1 (Activo).
+        case 'reactivar_usuario':
+            if (sesion_activa_personal($conn) <= 0) {
+                $response = ['status' => 'error', 'message' => 'Sesión no válida o inactiva. Inicia sesión de nuevo para continuar.'];
+                break;
+            }
+            $noEmpleado = intval($_POST['noEmpleado']);
+
+            $query = "UPDATE usuarios SET estatus = 1 WHERE noEmpleado = $noEmpleado";
+
+            if (mysqli_query($conn, $query)) {
+                $response = ['status' => 'success', 'message' => 'Colaborador reactivado correctamente en el sistema.'];
+            } else {
+                $response = ['status' => 'error', 'message' => 'Error al procesar la reactivación: ' . mysqli_error($conn)];
             }
             break;
 
@@ -782,6 +918,10 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
         // 🆕 CASO ADICIONAL: ALTA COMPLETA DE COLABORADORES EN EL EXPEDIENTE
         // ============================================================================
 case 'registrar_nuevo_empleado_sistema':
+            if (sesion_activa_personal($conn) <= 0) {
+                $response = ['status' => 'error', 'message' => 'Sesión no válida o inactiva. Inicia sesión de nuevo para continuar.'];
+                break;
+            }
             // Asegurar limpieza absoluta de datos obligatorios y numéricos
             $noEmpleado    = intval($_POST['nuevo_noEmpleado']);
             // Si el alta proviene de una vacante de SIVAC, viaja el id del candidato

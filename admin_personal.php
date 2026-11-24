@@ -173,7 +173,7 @@ require_once 'conn.php';
                                     </div>
                                     <div class="col-md-4">
                                         <label class="small text-muted font-weight-bold mb-1">NSS (Seguro Social)</label>
-                                        <input type="text" class="form-control shadow-none" name="nuevo_nss" maxlength="11" placeholder="11 dígitos">
+                                        <input type="text" class="form-control shadow-none" name="nuevo_nss" maxlength="12" placeholder="11 dígitos">
                                     </div>
                                     <div class="col-md-6">
                                         <label class="small text-muted font-weight-bold mb-1">Tipo de Contrato</label>
@@ -260,9 +260,13 @@ require_once 'conn.php';
                                         <label class="small text-muted font-weight-bold mb-1">No. Empleado (Fijo)</label>
                                         <input type="number" class="form-control bg-gray-200 fw-bold shadow-none" name="mod_noEmpleado" id="mod_noEmpleado" readonly>
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="small text-muted font-weight-bold mb-1">Nombre Completo</label>
-                                        <input type="text" class="form-control shadow-none" name="mod_nombre" id="mod_nombre" required>
+                                    <div class="col-md-3">
+                                        <label class="small text-muted font-weight-bold mb-1">Nombre(s)</label>
+                                        <input type="text" class="form-control shadow-none" name="mod_nombres" id="mod_nombres" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="small text-muted font-weight-bold mb-1">Apellidos</label>
+                                        <input type="text" class="form-control shadow-none" name="mod_apellidos" id="mod_apellidos" required>
                                     </div>
                                     <div class="col-md-3 d-flex align-items-end">
                                         <button type="button" class="btn btn-sm btn-outline-dark w-100 py-2 font-weight-bold shadow-none" onclick="abrir_modal_cambiar_foto()"><i class="fas fa-camera mr-1"></i> Fotografía</button>
@@ -295,6 +299,14 @@ require_once 'conn.php';
                                         <select class="form-select shadow-none" name="mod_jefe" id="mod_jefe" required></select>
                                     </div>
                                     <div class="col-md-4">
+                                        <label class="small text-muted font-weight-bold mb-1">Fecha de Nacimiento</label>
+                                        <input type="date" class="form-control shadow-none" name="mod_fechaNacimiento" id="mod_fechaNacimiento">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="small text-muted font-weight-bold mb-1">Región</label>
+                                        <select class="form-select shadow-none" name="mod_region" id="mod_region"></select>
+                                    </div>
+                                    <div class="col-md-4">
                                         <label class="small text-muted font-weight-bold mb-1">CURP</label>
                                         <input type="text" class="form-control text-uppercase shadow-none" name="mod_curp" id="mod_curp" maxlength="18">
                                     </div>
@@ -304,15 +316,30 @@ require_once 'conn.php';
                                     </div>
                                     <div class="col-md-4">
                                         <label class="small text-muted font-weight-bold mb-1">NSS (Seguro Social)</label>
-                                        <input type="text" class="form-control shadow-none" name="mod_nss" id="mod_nss" maxlength="11">
+                                        <input type="text" class="form-control shadow-none" name="mod_nss" id="mod_nss" maxlength="12">
                                     </div>
                                     <div class="col-md-4">
                                         <label class="small text-muted font-weight-bold mb-1">Tipo de Contrato</label>
-                                        <input type="text" class="form-control shadow-none" name="mod_tipoContrato" id="mod_tipoContrato">
+                                        <select class="form-select shadow-none" name="mod_tipoContrato" id="mod_tipoContrato">
+                                            <option value="PLANTA">PLANTA</option>
+                                            <option value="TEMPORAL">TEMPORAL</option>
+                                            <option value="PRACTICAS">PRACTICAS</option>
+                                            <option value="CONTRATO">CONTRATO</option>
+                                        </select>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="small text-muted font-weight-bold mb-1">Tipo de Sangre</label>
-                                        <input type="text" class="form-control shadow-none" name="mod_tipoSangre" id="mod_tipoSangre" maxlength="5">
+                                        <select class="form-select shadow-none" name="mod_tipoSangre" id="mod_tipoSangre">
+                                            <option value="" selected>Seleccionar...</option>
+                                            <option value="ARH+">ARH+</option>
+                                            <option value="ARH-">ARH-</option>
+                                            <option value="BRH+">BRH+</option>
+                                            <option value="BRH-">BRH-</option>
+                                            <option value="ABRH+">ABRH+</option>
+                                            <option value="ABRH-">ABRH-</option>
+                                            <option value="ORH+">ORH+</option>
+                                            <option value="ORH-">ORH-</option>
+                                        </select>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="small text-muted font-weight-bold mb-1">Nave</label>
