@@ -258,9 +258,13 @@ function cargar_tabla_administracion_docs() {
                             <button class="btn btn-sm btn-link text-warning p-1" onclick="abrir_modal_editar_usuario(${emp.noEmpleado})" title="Editar Colaborador">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn btn-sm btn-link text-danger p-1" onclick="confirmar_baja_logica(${emp.noEmpleado}, '${nombreEscapado}')" title="Baja Lógica">
-                                <i class="fas fa-user-slash"></i>
-                            </button>
+                            ${emp.estatus == 1 ?
+                                `<button class="btn btn-sm btn-link text-danger p-1" onclick="confirmar_baja_logica(${emp.noEmpleado}, '${nombreEscapado}')" title="Baja Lógica">
+                                    <i class="fas fa-user-slash"></i>
+                                </button>` :
+                                `<button class="btn btn-sm btn-link text-success p-1" onclick="confirmar_reactivar_usuario(${emp.noEmpleado}, '${nombreEscapado}')" title="Reactivar Colaborador">
+                                    <i class="fas fa-user-check"></i>
+                                </button>`}
                             <button class="btn btn-sm btn-link text-dark p-1" onclick="abrir_modal_jefes_tecnicos(${emp.noEmpleado}, '${nombreEscapado}')" title="Gestionar Habilidades">
                                 <i class="fas fa-microscope"></i>
                             </button>
@@ -426,6 +430,7 @@ function preparar_selects_catalogos_usuario() {
                 res.naves.forEach(function(n) { cache_naves_html += `<option value="${n.idNave}">${n.nave}</option>`; });
                 cache_regiones_html = '<option value="">-- Sin Región --</option>';
                 (res.regiones || []).forEach(function(r) { cache_regiones_html += `<option value="${r.id}">${r.region}</option>`; });
+                $('#mod_region').html(cache_regiones_html);
             }
         }
     });
@@ -442,7 +447,8 @@ function abrir_modal_editar_usuario(noEmpleado) {
                 let u = res.data;
                 $('#mod_noEmpleado').val(u.noEmpleado).data('foto-actual', u.foto || '');
                 $('#modal_telefonos_noEmpleado').val(u.noEmpleado);
-                $('#mod_nombre').val(u.nombre);
+                $('#mod_nombres').val(u.nombres || '');
+                $('#mod_apellidos').val(u.apellidos || '');
                 $('#mod_correo').val(u.correo);
                 $('#mod_departamento').val(u.departamento);
                 $('#mod_puesto').val(u.puesto);
@@ -454,7 +460,9 @@ function abrir_modal_editar_usuario(noEmpleado) {
                 $('#mod_tipoContrato').val(u.tipoContrato);
                 $('#mod_tipoSangre').val(u.tipoSangre);
                 $('#mod_fechaIngreso').val(u.fechaIngreso);
+                $('#mod_fechaNacimiento').val(u.fechaNacimiento || '');
                 $('#mod_nave').val(u.nave)
+                $('#mod_region').val(u.region || '');
 
                 $('#modal_editar_usuario').modal('show');
             } else {
@@ -503,6 +511,36 @@ function confirmar_baja_logica(noEmpleado, nombreCompleto) {
                 success: function(res) {
                     if (res.status === 'success') {
                         Swal.fire('Desactivado', res.message, 'success');
+                        cargar_tabla_administracion_docs(); 
+                    } else {
+                        Swal.fire('Error', res.message, 'error');
+                    }
+                }
+            });
+        }
+    });
+}
+
+function confirmar_reactivar_usuario(noEmpleado, nombreCompleto) {
+    Swal.fire({
+        title: '¿Reactivar al colaborador?',
+        text: `El usuario "${nombreCompleto}" (No. ${noEmpleado}) se marcará como activo y podrá acceder al sistema de nuevo.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#1cc88a',
+        cancelButtonColor: '#858796',
+        confirmButtonText: 'Sí, Reactivar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: 'action_controller.php',
+                type: 'POST',
+                data: { action: 'reactivar_usuario', noEmpleado: noEmpleado },
+                dataType: 'json',
+                success: function(res) {
+                    if (res.status === 'success') {
+                        Swal.fire('Reactivado', res.message, 'success');
                         cargar_tabla_administracion_docs(); 
                     } else {
                         Swal.fire('Error', res.message, 'error');
